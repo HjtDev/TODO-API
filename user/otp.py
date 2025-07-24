@@ -10,7 +10,7 @@ from django.core.exceptions import ImproperlyConfigured
 class OTP:
     def __init__(self, indicator: str, config: Dict[str, Any] = None):
         self.indicator = indicator
-        self.encoder = settings.cipher
+        self.encoder = settings.CIPHER
 
         self.settings = getattr(settings, 'OTP_SETTINGS', {}).copy()
         if config:
@@ -24,7 +24,7 @@ class OTP:
 
     def validate_settings(self):
         try:  # DIGITS Validation
-            digits = settings.OTP_SETTINGS['DIGITS']
+            digits = self.settings['DIGITS']
             if not isinstance(digits, int):
                 raise TypeError('OTP_SETTINGS["DIGITS"] must be an int')
             if digits < 2:
@@ -33,7 +33,7 @@ class OTP:
             raise KeyError('OTP_SETTINGS["DIGITS"] must be defined')
 
         try:
-            expiration_time = settings.OTP_SETTINGS['EXPIRATION_TIME']
+            expiration_time = self.settings['EXPIRATION_TIME']
 
             if not isinstance(expiration_time, timedelta):
                 raise TypeError('OTP_SETTINGS["EXPIRATION_TIME"] must be an instance of timedelta')
@@ -45,12 +45,14 @@ class OTP:
             raise KeyError('OTP_SETTINGS["EXPIRATION_TIME"] must be defined')
 
     def generate_token(self) -> str:
-        start = '1' + '0' * (settings.OTP_SETTINGS['DIGITS'] - 1)
-        end = '9' * settings.OTP_SETTINGS['DIGITS']
+        start = 10 ** (self.settings['DIGITS'] - 1)
+        end = (10 ** self.settings['DIGITS']) - 1
 
         return str(randint(int(start), int(end)))
 
     def save_token(self, token: str, **kwargs) -> bool:
+        if len(token) != self.settings['DIGITS']:
+            return False
         if cache.get(f'{self.indicator}-otp'):
             return False
         encoded_token = self.encoder.encrypt(token.encode())
@@ -64,10 +66,13 @@ class OTP:
         if data is None:
             return False, 'NO_ACTIVE_OTP', dict()
 
+        if not isinstance(data, dict):
+            return False, 'OTP_MISMATCH', dict()
+
         token = data.pop('token', None)
 
         if token is None:
-            return False, 'NO_TOKEN_FOUND', dict()
+            return False, 'NO_TOKEN_FOUND', data
 
         return True, token, data
 
@@ -78,10 +83,14 @@ class OTP:
             return success, result
         # noinspection PyBroadException
         try:
-            decrypted_token = self.encoder.decrypt(token).decode()
+            decrypted_token = self.encoder.decrypt(result).decode()
         except Exception as e:
             return False, 'FAILED TO DECRYPT OTP'
+
         return decrypted_token == token, extra
 
     def cancel_otp(self) -> bool:
         return cache.delete(f'{self.indicator}-otp')
+
+    def __str__(self):
+        return f'OTP - {self.indicator}'
