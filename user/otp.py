@@ -3,12 +3,21 @@ from datetime import timedelta
 from django.core.cache import cache
 from django.conf import settings
 from random import randint
+from typing import Dict, Any
+from django.core.exceptions import ImproperlyConfigured
 
 
 class OTP:
-    def __init__(self, indicator: str):
+    def __init__(self, indicator: str, config: Dict[str, Any] = None):
         self.indicator = indicator
         self.encoder = settings.cipher
+
+        self.settings = getattr(settings, 'OTP_SETTINGS', {}).copy()
+        if config:
+            self.settings.update(config)
+        if not self.settings:
+            raise ImproperlyConfigured('OTP_SETTINGS is not configured')
+
         self.expiration_time = None
 
         self.validate_settings()
