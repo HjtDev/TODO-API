@@ -12,6 +12,7 @@ https://docs.djangoproject.com/en/5.2/ref/settings/
 
 from pathlib import Path
 from datetime import timedelta
+from cryptography.fernet import Fernet
 import environ
 
 # Build paths inside the project like this: BASE_DIR / 'subdir'.
@@ -181,4 +182,15 @@ SIMPLE_JWT = {
     "USER_ID_FIELD": "phone",
     "USER_ID_CLAIM": "phone",
     "USER_AUTHENTICATION_RULE": "rest_framework_simplejwt.authentication.default_user_authentication_rule",
+}
+
+# Cryptography
+
+cipher = Fernet(Fernet.generate_key())
+
+# OTP
+
+OTP_SETTINGS = {
+    'DIGITS': 4,
+    'EXPIRATION_TIME': timedelta(minutes=2),
 }
