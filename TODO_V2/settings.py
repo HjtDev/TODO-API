@@ -46,6 +46,8 @@ INSTALLED_APPS = [
     'django.contrib.sessions',
     'django.contrib.messages',
     'django.contrib.staticfiles',
+    'rest_framework',
+    'drf_spectacular',
     'user.apps.UserConfig'
 ]
 
@@ -162,11 +164,12 @@ REST_FRAMEWORK = {
         'rest_framework.permissions.IsAuthenticated',
     ),
     'DEFAULT_THROTTLE_CLASSES': (
-        'rest_framework.throttling.ScopedRateThrottle'
+        'rest_framework.throttling.ScopedRateThrottle',
     ),
     'DEFAULT_THROTTLE_RATES': {
         'auth': '5/min'
-    }
+    },
+    'DEFAULT_SCHEMA_CLASS': 'drf_spectacular.openapi.AutoSchema',
 }
 
 # JWT
@@ -229,4 +232,26 @@ CIPHER = Fernet(Fernet.generate_key())
 OTP_SETTINGS = {
     'DIGITS': 4,
     'EXPIRATION_TIME': timedelta(minutes=2),
+}
+
+# DRF Spectacular
+
+SPECTACULAR_SETTINGS = {
+    'TITLE': 'TODO APP API',
+    'DESCRIPTION': 'an API endpoint for simple TODO apps',
+    'VERSION': '2.0.0',
+    'CONTACT': {
+        'name': 'Mohammad Hojjat Nikoobakht',
+        'email': 'm.h.nikoobakht@gmail.com',
+    },
+
+    'SWAGGER_UI_SETTINGS': {
+        'deepLinking': True,
+        'persistAuthorization': True,
+        'displayOperationId': True,
+    },
+    'REDOC_UI_SETTINGS': {
+        'expandSingleSchemaField': True,
+        'hideDownloadButton': True,
+    },
 }
