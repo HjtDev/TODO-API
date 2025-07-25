@@ -17,5 +17,4 @@ class GetDataMixin:
 
 class ResponseBuilderMixin:
     def build_response(self, response_status: status = status.HTTP_200_OK, **kwargs):
-
         return Response(data=kwargs, status=response_status)

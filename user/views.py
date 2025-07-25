@@ -8,6 +8,8 @@ from rest_framework import status
 from TODO_V2.mixins import GetDataMixin, ResponseBuilderMixin
 from TODO_V2.utility import send_sms
 from drf_spectacular.utils import extend_schema, extend_schema_view, OpenApiResponse, OpenApiExample, OpenApiParameter, OpenApiTypes, OpenApiRequest
+from rest_framework_simplejwt.tokens import RefreshToken, AccessToken, OutstandingToken, BlacklistedToken
+from .serializers import UserSerializer
 import logging
 
 
@@ -157,7 +159,7 @@ class StartAuthentication(APIView, GetDataMixin, ResponseBuilderMixin):
         except User.DoesNotExist:
             # Register
             auth_type = 'register'
-            extra = {'phone': data['phone']}
+            extra = {'register': data['phone']}
 
         otp = OTP(data['phone'])
         token = otp.generate_token()
@@ -174,3 +176,115 @@ class StartAuthentication(APIView, GetDataMixin, ResponseBuilderMixin):
                 response_status=status.HTTP_423_LOCKED,
                 message='there is an active OTP please complete the active OTP or wait for expiration',
             )
+
+
+class CompleteAuthentication(APIView, GetDataMixin, ResponseBuilderMixin):
+    permission_classes = (AllowAny,)
+    throttle_scope = 'auth_verify'
+
+    def post(self, request):
+        try:
+            data = self.get_data(request, 'phone', 'token')
+        except ValidationError as e:
+            return self.build_response(
+                response_status=status.HTTP_400_BAD_REQUEST,
+                message=str(e),
+            )
+
+        try:
+            phone_validator(data['phone'])
+        except ValidationError as e:
+            return self.build_response(
+                response_status=status.HTTP_400_BAD_REQUEST,
+                message=str(e),
+            )
+
+        otp = OTP(data['phone'])
+        success, result = otp.validate_otp(data['token'])
+
+        if not success:
+            if result == 'OTP_MISMATCH':
+                return self.build_response(
+                    response_status=status.HTTP_409_CONFLICT,
+                    message='Failed to validate OTP'
+                )
+            elif result == 'NO_ACTIVE_OTP':
+                return self.build_response(
+                    response_status=status.HTTP_404_NOT_FOUND,
+                    message='There is no active OTP for this phone'
+                )
+            elif result == 'NO_TOKEN_FOUND':
+                return self.build_response(
+                    response_status=status.HTTP_500_INTERNAL_SERVER_ERROR,
+                    message='Failed to retrieve OTP token'
+                )
+            elif result == 'INVALID_OTP_TOKEN':
+                return self.build_response(
+                    response_status=status.HTTP_406_NOT_ACCEPTABLE,
+                    message='Invalid OTP token'
+                )
+            else:
+                return self.build_response(
+                    response_status=status.HTTP_500_INTERNAL_SERVER_ERROR,
+                    message='Something went wrong'
+                )
+
+        otp.cancel_otp()
+
+        if 'id' in result:  # login
+            try:
+                user = User.objects.get(id=result['id'])
+                if not user.is_active:
+                    return self.build_response(
+                        response_status=status.HTTP_403_FORBIDDEN,
+                        message='User is not active'
+                    )
+
+                # Deactivating the existing tokens
+                active_tokens = OutstandingToken.objects.filter(user=user)
+                if active_tokens.exists():
+                    for token in active_tokens:
+                        BlacklistedToken.objects.get_or_create(token=token)
+
+                refresh_token = RefreshToken.for_user(user)
+
+                return self.build_response(
+                    response_status=status.HTTP_200_OK,
+                    message='Successful Authentication.',
+                    user=UserSerializer(user).data,
+                    auth={
+                        'refresh': str(refresh_token),
+                        'access': str(refresh_token.access_token),
+                        'refresh_expires_in': refresh_token.payload['exp'],
+                        'access_expires_in': refresh_token.access_token.payload['exp'],
+                    }
+                )
+
+            except User.DoesNotExist:
+                logger.critical(f'Auth failure for {data["phone"]}', exc_info=True)
+                return self.build_response(
+                    response_status=status.HTTP_500_INTERNAL_SERVER_ERROR,
+                    message='Please try again later'
+                )
+
+        if 'register' in result:  # register
+            user = User.objects.create_user(phone=result['register'])
+
+            refresh_token = RefreshToken.for_user(user)
+
+            return self.build_response(
+                response_status=status.HTTP_200_OK,
+                message='Successful Authentication.',
+                user=UserSerializer(user).data,
+                auth={
+                    'refresh': str(refresh_token),
+                    'access': str(refresh_token.access_token),
+                    'refresh_expires_in': refresh_token.payload['exp'],
+                    'access_expires_in': refresh_token.access_token.payload['exp'],
+                }
+            )
+
+        return self.build_response(
+            response_status=status.HTTP_500_INTERNAL_SERVER_ERROR,
+            message='Something went wrong, Please try again later'
+        )

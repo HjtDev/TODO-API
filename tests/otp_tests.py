@@ -95,7 +95,7 @@ def test_validate_otp(otp):
     # Invalid token
     success, extra = otp.validate_otp('1234')
     assert not success
-    assert extra == test_data
+    assert extra == 'INVALID_OTP_TOKEN'
 
     # Success
     success, extra = otp.validate_otp(token)

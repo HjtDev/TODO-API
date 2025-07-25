@@ -1,10 +1,13 @@
 from datetime import timedelta
-
 from django.core.cache import cache
 from django.conf import settings
 from random import randint
 from typing import Dict, Any
 from django.core.exceptions import ImproperlyConfigured
+import logging
+
+
+logger = logging.getLogger(__name__)
 
 
 class OTP:
@@ -83,11 +86,14 @@ class OTP:
             return success, result
         # noinspection PyBroadException
         try:
-            decrypted_token = self.encoder.decrypt(result).decode()
+            decrypted_token = self.encoder.decrypt(result.decode()).decode()
         except Exception as e:
-            return False, 'FAILED TO DECRYPT OTP'
+            return False, 'FAILED_TO_DECRYPT_TOKEN'
 
-        return decrypted_token == token, extra
+        if decrypted_token == token:
+            return True, extra
+        else:
+            return False, 'INVALID_OTP_TOKEN'
 
     def cancel_otp(self) -> bool:
         return cache.delete(f'{self.indicator}-otp')
