@@ -2,6 +2,8 @@ from django.core.exceptions import ValidationError
 from rest_framework.permissions import IsAuthenticated, AllowAny
 from rest_framework.response import Response
 from rest_framework.views import APIView
+
+import user
 from .otp import OTP
 from .models import User, phone_validator
 from rest_framework import status
@@ -19,6 +21,7 @@ logger = logging.getLogger(__name__)
 @extend_schema_view(
     post=extend_schema(
         # Metadata
+        operation_id='1',
         tags=['Authentication'],
         summary='Start authentication',
         description='Start authentication with a phone number (works for both login and registration)',
@@ -44,8 +47,8 @@ logger = logging.getLogger(__name__)
                 'properties': {
                     'phone': {
                         'type': 'string',
-                        'example': '+989121234567',
-                        'description': 'E.164 formatted phone number'
+                        'example': '09121234567',
+                        'description': 'Phone Number'
                     }
                 },
                 'required': ['phone'],
@@ -178,6 +181,115 @@ class StartAuthentication(APIView, GetDataMixin, ResponseBuilderMixin):
             )
 
 
+@extend_schema_view(
+    post=extend_schema(
+        operation_id='2',
+        tags=['Authentication'],
+        summary='Complete Authentication',
+        description='Complete authentication with the phone number that was used in "Start Authentication" and OTP token for verification.',
+
+        parameters=[
+            OpenApiParameter(
+                name='phone',
+                description='Phone number',
+                required=True,
+                type=str,
+                examples=[
+                    OpenApiExample('Valid', value='09121234567'),
+                    OpenApiExample('Invalid', value='9123456789')
+                ]
+            ),
+            OpenApiParameter(
+                name='token',
+                description='OTP token',
+                required=True,
+                type=str,
+                examples=[
+                    OpenApiExample('Example OTP Token', value='1234'),
+                ]
+            )
+        ],
+
+        request={
+            'application/json': {
+                'type': 'object',
+                'properties': {
+                    'phone': {
+                        'type': 'string',
+                        'example': '09121234567',
+                        'description': 'Phone Number'
+                    },
+                    'token': {
+                        'type': 'string',
+                        'example': '1234',
+                        'description': 'OTP Token'
+                    }
+                },
+                'required': ['phone', 'token'],
+                'examples': {
+                    'Valid Example': {
+                        'value': {
+                            'phone': '09123456789',
+                            'token': '1234'
+                        },
+                        'description': 'Proper phone and token'
+                    },
+                    'Invalid Example': {
+                        'value': {
+                            'phone': '9123456789',
+                            'token': '1234'
+                        },
+                        'description': 'Invalid phone number format'
+                    }
+                }
+            }
+        },
+
+        examples=[
+            OpenApiExample(
+                'Valid Request',
+                value={
+                    'phone': '09123456789',
+                    'token': '1234'
+                }
+            ),
+            OpenApiExample(
+                'Invalid Request',
+                value={
+                    'phone': '+989123456789',
+                    'token': '1234'
+                }
+            )
+        ],
+
+        responses={
+            200: OpenApiResponse(
+                description='Successful Authentication',
+                response=dict,
+                examples=[
+                    OpenApiExample(
+                        'Successful Authentication',
+                        value={
+                            'message': 'Successful Authentication',
+                            'user': {
+                                'id': '1',
+                                'phone': '09123456789',
+                                'email': 'user@gmail.com',
+                                'profile': '/media/default.png'
+                            },
+                            'auth': {
+                                'refresh': 'eyJh...',
+                                'access': 'eyJh...',
+                                'refresh_expires_in': 1754742040,
+                                'access_expires_in': 1753449640,
+                            }
+                        }
+                    )
+                ]
+            )
+        }
+    )
+)
 class CompleteAuthentication(APIView, GetDataMixin, ResponseBuilderMixin):
     permission_classes = (AllowAny,)
     throttle_scope = 'auth_verify'
