@@ -7,3 +7,9 @@ class UserSerializer(ModelSerializer):
         model = User
         fields = ('id', 'phone', 'email', 'name', 'profile', 'date_joined', 'is_active', 'is_staff', 'is_superuser')
         read_only_fields = ('id', 'phone', 'date_joined', 'is_active', 'is_staff', 'is_superuser')
+
+
+class EditProfileSerializer(ModelSerializer):
+    class Meta:
+        model = User
+        fields = ('email', 'name', 'profile')

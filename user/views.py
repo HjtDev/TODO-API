@@ -1,3 +1,5 @@
+from wsgiref.validate import PartialIteratorWrapper
+
 from django.core.exceptions import ValidationError
 from django.utils import timezone
 from rest_framework.permissions import IsAuthenticated, AllowAny
@@ -10,7 +12,7 @@ from TODO_V2.mixins import GetDataMixin, ResponseBuilderMixin
 from TODO_V2.utility import send_sms
 from drf_spectacular.utils import extend_schema, extend_schema_view, OpenApiResponse, OpenApiExample, OpenApiParameter
 from rest_framework_simplejwt.tokens import RefreshToken, AccessToken, OutstandingToken, BlacklistedToken
-from .serializers import UserSerializer
+from .serializers import UserSerializer, EditProfileSerializer
 import logging
 
 
@@ -620,4 +622,26 @@ class RenewToken(APIView, GetDataMixin, ResponseBuilderMixin):
                 'access': str(access),
                 'access_expires_in': access.payload['exp'],
             }
+        )
+
+
+class EditProfile(APIView, ResponseBuilderMixin):
+    permission_classes = (IsAuthenticated,)
+    throttle_scope = 'auth_edit_profile'
+
+    def patch(self, request):
+        serializer = EditProfileSerializer(instance=request.user, data=request.data, partial=True)
+
+        if serializer.is_valid():
+            serializer.save()
+            return self.build_response(
+                response_status=status.HTTP_200_OK,
+                message='Profile updated successfully',
+                user=serializer.data
+            )
+
+        return self.build_response(
+            response_status=status.HTTP_400_BAD_REQUEST,
+            message='Failed to update profile',
+            errors=serializer.errors
         )
