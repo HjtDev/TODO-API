@@ -486,6 +486,121 @@ class CompleteAuthentication(APIView, GetDataMixin, ResponseBuilderMixin):
         )
 
 
+@extend_schema_view(
+    post=extend_schema(
+        operation_id='3',
+        tags=['Authentication'],
+        summary='Renew Access Token',
+        description='Renew expired access tokens using refresh token.',
+
+        parameters=[
+            OpenApiParameter(
+                name='refresh',
+                description='Should be a valid and active refresh token.',
+                required=True,
+                type=str,
+            )
+        ],
+
+        request={
+            'application/json': {
+                'type': 'object',
+                'properties': {
+                    'refresh': {
+                        'type': 'string',
+                        'example': 'eyJh...',
+                        'description': 'Refresh Token.'
+                    }
+                },
+                'required': ['refresh'],
+                'examples': {
+                    'Valid Example': {
+                        'value': {
+                            'refresh': 'eyJh...',
+                        },
+                        'description': 'Proper refresh token format.'
+                    }
+                }
+            }
+        },
+
+        examples=[
+            OpenApiExample(
+                'Valid Example',
+                value={
+                    'refresh': 'eyJh...',
+                }
+            )
+        ],
+
+        responses={
+            200: OpenApiResponse(
+                description='Successful Generation.',
+                response=dict,
+                examples=[
+                    OpenApiExample(
+                        'Successful Generation',
+                        value={
+                            'message': 'Access Token Generated Successfully',
+                            'auth': {
+                                'access': 'eyJh...',
+                                'access_expires_in': 1753449640,
+                            }
+                        }
+                    )
+                ]
+            ),
+            400: OpenApiResponse(
+                description='Bad Request.',
+                response=dict,
+                examples=[
+                    OpenApiExample(
+                        'No refresh token provided.',
+                        value={
+                            'refresh': 'this field is required',
+                        }
+                    )
+                ]
+            ),
+            401: OpenApiResponse(
+                description='Blacklisted',
+                response=dict,
+                examples=[
+                    OpenApiExample(
+                        'Blacklisted refresh token',
+                        value={
+                            'message': 'Refresh token is blacklisted.',
+                        }
+                    )
+                ]
+            ),
+            403: OpenApiResponse(
+                description='Invalid/expired/deactivated refresh token',
+                response=dict,
+                examples=[
+                    OpenApiExample(
+                        'Invalid refresh token',
+                        value={
+                            'message': 'Invalid refresh token.',
+                        }
+                    )
+                ]
+            ),
+            404: OpenApiResponse(
+                description='User not found',
+                response=dict,
+                examples=[
+                    OpenApiExample(
+                        'refresh token payload doesn\'t point to any existing user.',
+                        value={
+                            'message': 'User not found.',
+                        }
+                    )
+                ]
+            )
+        }
+    )
+)
 class RenewToken(APIView, GetDataMixin, ResponseBuilderMixin):
     permission_classes = (AllowAny,)
     throttle_scope = 'auth_renew'
