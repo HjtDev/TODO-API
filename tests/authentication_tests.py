@@ -1,7 +1,9 @@
+from datetime import timedelta
 import pytest
 from django.urls import reverse
 from rest_framework import status
 from rest_framework.test import APIClient
+from rest_framework_simplejwt.tokens import RefreshToken
 from user.models import User
 from user.otp import OTP
 from django.conf import settings
@@ -12,11 +14,13 @@ INVALID_PHONE = '9123456789'
 CONTENT_TYPE = 'application/json'
 START_AUTH_URL = reverse('user:start-authentication')
 COMPLETE_AUTH_URL = reverse('user:complete-authentication')
+TOKEN_RENEW_URL = reverse('user:renew-token')
 
 @pytest.fixture
 def client(db):
     settings.REST_FRAMEWORK['DEFAULT_THROTTLE_RATES']['auth'] = '1000/sec'
     settings.REST_FRAMEWORK['DEFAULT_THROTTLE_RATES']['auth_verify'] = '1000/sec'
+    settings.REST_FRAMEWORK['DEFAULT_THROTTLE_RATES']['auth_renew'] = '1000/sec'
     yield APIClient()
 
 
@@ -157,3 +161,81 @@ def test_complete_authentication(client):
     assert 'access_expires_in' in response_data['auth']
 
     otp.cancel_otp()
+
+
+def test_token_renewal(client):
+    response = client.post(
+        START_AUTH_URL,
+        data={'phone': VALID_PHONE},
+        content_type=CONTENT_TYPE,
+    )
+    assert response.status_code == status.HTTP_200_OK
+
+    otp = OTP(VALID_PHONE)
+    success, encrypted_token, extra = otp.restore_token()
+    decrypted = otp.encoder.decrypt(encrypted_token).decode()
+
+    response = client.post(
+        COMPLETE_AUTH_URL,
+        data={
+            'phone': VALID_PHONE,
+            'token': decrypted
+        },
+        content_type=CONTENT_TYPE,
+    )
+    assert response.status_code == status.HTTP_200_OK
+
+    data = response.json()
+    refresh = data['auth']['refresh']
+
+    assert RefreshToken(refresh)
+    refresh = RefreshToken(refresh)
+
+    # Test no refresh token
+    response = client.post(
+        COMPLETE_AUTH_URL,
+        data={},
+        content_type=CONTENT_TYPE
+    )
+    assert response.status_code == status.HTTP_400_BAD_REQUEST
+
+    # Test Invalid refresh token
+    response = client.post(
+        TOKEN_RENEW_URL,
+        data={'refresh': 'abcd'},
+        content_type=CONTENT_TYPE,
+    )
+    assert response.status_code in (status.HTTP_401_UNAUTHORIZED, status.HTTP_403_FORBIDDEN)
+
+    # Test valid token
+    response = client.post(
+        TOKEN_RENEW_URL,
+        data={'refresh': refresh.token},
+        content_type=CONTENT_TYPE,
+    )
+    assert response.status_code == status.HTTP_200_OK
+    data = response.json()
+    assert 'auth' in data
+    assert 'access' in data['auth']
+    assert 'access_expires_in' in data['auth']
+
+    # Test Blacklisted token
+    refresh.blacklist()
+
+    response = client.post(
+        TOKEN_RENEW_URL,
+        data={'refresh': refresh.token},
+        content_type=CONTENT_TYPE,
+    )
+    assert response.status_code in (status.HTTP_401_UNAUTHORIZED, status.HTTP_403_FORBIDDEN)
+
+    # Test expired refresh token
+    user, _ = User.objects.get_or_create(phone=VALID_PHONE)
+    refresh = RefreshToken.for_user(user)
+    refresh.set_exp(lifetime=-timedelta(days=1))
+    response = client.post(
+        TOKEN_RENEW_URL,
+        data={'refresh': str(refresh)},
+        content_type=CONTENT_TYPE,
+    )
+    assert response.status_code in (status.HTTP_401_UNAUTHORIZED, status.HTTP_403_FORBIDDEN)
