@@ -204,7 +204,8 @@ class StartAuthentication(APIView, GetDataMixin, ResponseBuilderMixin):
                 required=True,
                 type=str,
                 examples=[
-                    OpenApiExample('Example OTP Token', value='1234'),
+                    OpenApiExample('Valid', value='1234'),
+                    OpenApiExample('Invalid', value='12c4'),
                 ]
             )
         ],
@@ -282,6 +283,90 @@ class StartAuthentication(APIView, GetDataMixin, ResponseBuilderMixin):
                                 'refresh_expires_in': 1754742040,
                                 'access_expires_in': 1753449640,
                             }
+                        }
+                    )
+                ]
+            ),
+            400: OpenApiResponse(
+                description='Bad Request',
+                response=dict,
+                examples=[
+                    OpenApiExample(
+                        'No phone',
+                        value={
+                            'phone': 'this field is required'
+                        }
+                    ),
+                    OpenApiExample(
+                        'No token',
+                        value={
+                            'token': 'this field is required'
+                        }
+                    ),
+                    OpenApiExample(
+                        'Invalid phone format',
+                        value={
+                            'message': 'Invalid phone format'
+                        }
+                    ),
+                ]
+            ),
+            403: OpenApiResponse(
+                description='User not active (Banned from authentication)',
+                response=dict,
+                examples=[
+                    OpenApiExample(
+                        'User not active',
+                        value={
+                            'message': 'User is not active'
+                        }
+                    )
+                ]
+            ),
+            404: OpenApiResponse(
+              description='No Active OTP',
+                response=dict,
+                examples=[
+                    OpenApiExample(
+                        'No Active OTP (cooldown has expired)',
+                        value={
+                            'message': 'There is no active OTP for this phone'
+                        }
+                    )
+                ]
+            ),
+            406: OpenApiResponse(
+                description='Invalid OTP token (OTP is active but the given token is not valid)',
+                response=dict,
+                examples=[
+                    OpenApiExample(
+                        'Invalid OTP token',
+                        value={
+                            'message': 'Invalid OTP token'
+                        }
+                    )
+                ]
+            ),
+            409: OpenApiResponse(
+                description='Conflict(SMS service problem or hashing problem)',
+                response=dict,
+                examples=[
+                    OpenApiExample(
+                        'Conflict',
+                        value={
+                            'message': 'Failed to validate OTP'
+                        }
+                    )
+                ]
+            ),
+            500: OpenApiResponse(
+                description='Internal Server Error. Found an active OTP but due cache backend problems couldn\'t retrieve it',
+                response=dict,
+                examples=[
+                    OpenApiExample(
+                        'Internal Server Error',
+                        value={
+                            'message': 'Error'
                         }
                     )
                 ]
