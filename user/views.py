@@ -52,29 +52,17 @@ logger = logging.getLogger(__name__)
                 },
                 'required': ['phone'],
                 'examples': {
-                    'Valid Example': {
+                    'Valid Request': {
                         'value': {'phone': '+989121234567'},
                         'description': 'Proper E.164 format'
                     },
-                    'Invalid Example': {
+                    'Invalid Request': {
                         'value': {'phone': '9123456789'},
                         'description': 'Missing country code'
                     }
                 }
             }
         },
-
-        # 3. Additional examples (supports older DRF Spectacular versions)
-        examples=[
-            OpenApiExample(
-                'Valid Request',
-                value={'phone': '09121234567'},
-            ),
-            OpenApiExample(
-                'Invalid Request',
-                value={'phone': '9123456789'},
-            )
-        ],
 
         # 4. Comprehensive responses
         responses={
@@ -227,14 +215,14 @@ class StartAuthentication(APIView, GetDataMixin, ResponseBuilderMixin):
                 },
                 'required': ['phone', 'token'],
                 'examples': {
-                    'Valid Example': {
+                    'Valid Request': {
                         'value': {
                             'phone': '09123456789',
                             'token': '1234'
                         },
                         'description': 'Proper phone and token'
                     },
-                    'Invalid Example': {
+                    'Invalid Request': {
                         'value': {
                             'phone': '9123456789',
                             'token': '1234'
@@ -244,23 +232,6 @@ class StartAuthentication(APIView, GetDataMixin, ResponseBuilderMixin):
                 }
             }
         },
-
-        examples=[
-            OpenApiExample(
-                'Valid Request',
-                value={
-                    'phone': '09123456789',
-                    'token': '1234'
-                }
-            ),
-            OpenApiExample(
-                'Invalid Request',
-                value={
-                    'phone': '+989123456789',
-                    'token': '1234'
-                }
-            )
-        ],
 
         responses={
             200: OpenApiResponse(
@@ -524,15 +495,6 @@ class CompleteAuthentication(APIView, GetDataMixin, ResponseBuilderMixin):
             }
         },
 
-        examples=[
-            OpenApiExample(
-                'Valid Example',
-                value={
-                    'refresh': 'eyJh...',
-                }
-            )
-        ],
-
         responses={
             200: OpenApiResponse(
                 description='Successful Generation.',
@@ -587,11 +549,11 @@ class CompleteAuthentication(APIView, GetDataMixin, ResponseBuilderMixin):
                 ]
             ),
             404: OpenApiResponse(
-                description='User not found',
+                description='Refresh token payload doesn\'t point to any existing user.',
                 response=dict,
                 examples=[
                     OpenApiExample(
-                        'refresh token payload doesn\'t point to any existing user.',
+                        'User not found',
                         value={
                             'message': 'User not found.',
                         }
