@@ -14,6 +14,9 @@ class GetDataMixin:
 
         return result
 
+    def convert_data_to_bool(self, data: str) -> bool:
+        return True if data in ('True', 'true', 'yes', 'y', '1', 1) else False
+
 
 class ResponseBuilderMixin:
     def build_response(self, response_status: status = status.HTTP_200_OK, **kwargs):
