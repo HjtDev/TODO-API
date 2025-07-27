@@ -1,9 +1,8 @@
-from wsgiref.validate import PartialIteratorWrapper
-
 from django.core.exceptions import ValidationError
 from django.utils import timezone
 from rest_framework.permissions import IsAuthenticated, AllowAny
 from rest_framework.views import APIView
+from rest_framework_simplejwt.authentication import JWTAuthentication
 from rest_framework_simplejwt.exceptions import TokenError, InvalidToken
 from .otp import OTP
 from .models import User, phone_validator
@@ -13,10 +12,12 @@ from TODO_V2.utility import send_sms
 from drf_spectacular.utils import extend_schema, extend_schema_view, OpenApiResponse, OpenApiExample, OpenApiParameter
 from rest_framework_simplejwt.tokens import RefreshToken, AccessToken, OutstandingToken, BlacklistedToken
 from .serializers import UserSerializer, EditProfileSerializer
+from PIL import Image
 import logging
 
 
 logger = logging.getLogger(__name__)
+REQUIRED_AUTHENTICATION = '\n\nRequires authentication => headers: {"Authorization": "Bearer <ACCESS_TOKEN>"}'
 
 
 @extend_schema_view(
@@ -332,6 +333,18 @@ class StartAuthentication(APIView, GetDataMixin, ResponseBuilderMixin):
                     )
                 ]
             ),
+            429: OpenApiResponse(
+                description='Too Many Requests',
+                response=dict,
+                examples=[
+                    OpenApiExample(
+                        'Too Many Requests',
+                        value={
+                            'detail': 'Request was throttled. Expected available in 60 seconds.'
+                        }
+                    )
+                ]
+            ),
             500: OpenApiResponse(
                 description='Internal Server Error. Found an active OTP but due cache backend problems couldn\'t retrieve it',
                 response=dict,
@@ -561,6 +574,18 @@ class CompleteAuthentication(APIView, GetDataMixin, ResponseBuilderMixin):
                         }
                     )
                 ]
+            ),
+            429: OpenApiResponse(
+                description='Too Many Requests',
+                response=dict,
+                examples=[
+                    OpenApiExample(
+                        'Too Many Requests',
+                        value={
+                            'detail': 'Request was throttled. Expected available in 60 seconds.'
+                        }
+                    )
+                ]
             )
         }
     )
@@ -625,6 +650,141 @@ class RenewToken(APIView, GetDataMixin, ResponseBuilderMixin):
         )
 
 
+@extend_schema_view(
+    patch=extend_schema(
+        tags=['User'],
+        summary='Edit user detail',
+        description='Edit user profile details such as name, email and profile picture.' + REQUIRED_AUTHENTICATION,
+
+        parameters=[
+            OpenApiParameter(
+                name='name',
+                description='User\'s name (should be less 60 characters)',
+                type=str,
+                required=False,
+                examples=[
+                    OpenApiExample(
+                        'Valid name',
+                        value='Mickael Jackson'
+                    )
+                ]
+            ),
+            OpenApiParameter(
+                name='email',
+                description='User\'s email',
+                type=str,
+                required=False,
+                examples=[
+                    OpenApiExample(
+                        'Valid email',
+                        value='test@gmail.com'
+                    )
+                ]
+            ),
+            OpenApiParameter(
+                name='profile',
+                description='User\'s profile picture (.png file)',
+                required=False,
+                examples=[
+                    OpenApiExample(
+                        'Profile picture',
+                        value='profile.png'
+                    )
+                ]
+            )
+        ],
+
+        request={
+            'multipart/form-data': {
+                'type': 'object',
+                'properties': {
+                    'name': {
+                        'type': 'string',
+                        'example': 'Mickael Jackson',
+                        'description': 'User\'s name (should be less 60 characters)',
+                    },
+                    'email': {
+                        'type': 'string',
+                        'description': 'User\'s email',
+                        'example': 'test@gmail.com',
+                    },
+                    'profile': {
+                        'type': 'object',
+                        'description': 'User\'s profile picture (.png file)'
+                    }
+                },
+                'required': [],
+                'examples': {
+                    'Valid Example': {
+                        'value': {
+                            'name': 'new name',
+                            'email': 'new@gmail.com',
+                            'profile': 'https://picsum.photos/200/300'
+                        },
+                        'description': 'Accepted fields.'
+                    }
+                }
+            }
+        },
+
+        responses={
+            200: OpenApiResponse(
+                description='Profile Updated Successfully',
+                response=dict,
+                examples=[
+                    OpenApiExample(
+                        'Success Response',
+                        value={
+                            'message': 'Profile Updated Successfully',
+                            'user': {
+                                'name': '<NAME>',
+                                'email': '<EMAIL>',
+                                'profile': '<PROFILE>'
+                            }
+                        }
+                    )
+                ]
+            ),
+            400: OpenApiResponse(
+                description='Bad Request',
+                response=dict,
+                examples=[
+                    OpenApiExample(
+                        'Bad Request',
+                        value={
+                            'message': 'Failed to update profile',
+                            'errors': {'<FIELD>': '<ERROR>'}
+                        }
+                    )
+                ]
+            ),
+            401: OpenApiResponse(
+                description='Unauthorized',
+                response=dict,
+                examples=[
+                    OpenApiExample(
+                        'Unauthorized',
+                        value={
+                            'detail': 'Authentication credentials were not provided.'
+                        }
+                    )
+                ]
+            ),
+            429: OpenApiResponse(
+                description='Too Many Requests',
+                response=dict,
+                examples=[
+                    OpenApiExample(
+                        'Too Many Requests',
+                        value={
+                            'detail': 'Request was throttled. Expected available in 60 seconds.'
+                        }
+                    )
+                ]
+            )
+        }
+    )
+)
 class EditProfile(APIView, ResponseBuilderMixin):
     permission_classes = (IsAuthenticated,)
     throttle_scope = 'auth_edit_profile'
