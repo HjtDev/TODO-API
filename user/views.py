@@ -1,15 +1,14 @@
 from django.core.exceptions import ValidationError
+from django.utils import timezone
 from rest_framework.permissions import IsAuthenticated, AllowAny
-from rest_framework.response import Response
 from rest_framework.views import APIView
-
-import user
+from rest_framework_simplejwt.exceptions import TokenError, InvalidToken
 from .otp import OTP
 from .models import User, phone_validator
 from rest_framework import status
 from TODO_V2.mixins import GetDataMixin, ResponseBuilderMixin
 from TODO_V2.utility import send_sms
-from drf_spectacular.utils import extend_schema, extend_schema_view, OpenApiResponse, OpenApiExample, OpenApiParameter, OpenApiTypes, OpenApiRequest
+from drf_spectacular.utils import extend_schema, extend_schema_view, OpenApiResponse, OpenApiExample, OpenApiParameter
 from rest_framework_simplejwt.tokens import RefreshToken, AccessToken, OutstandingToken, BlacklistedToken
 from .serializers import UserSerializer
 import logging
@@ -399,4 +398,64 @@ class CompleteAuthentication(APIView, GetDataMixin, ResponseBuilderMixin):
         return self.build_response(
             response_status=status.HTTP_500_INTERNAL_SERVER_ERROR,
             message='Something went wrong, Please try again later'
+        )
+
+
+class RenewToken(APIView, GetDataMixin, ResponseBuilderMixin):
+    permission_classes = (AllowAny,)
+    throttle_scope = 'auth_renew'
+
+    def post(self, request):
+        try:
+            data = self.get_data(request, 'refresh')
+        except ValidationError as e:
+            return self.build_response(
+                response_status=status.HTTP_400_BAD_REQUEST,
+                message=str(e),
+            )
+
+        try:
+            refresh = RefreshToken(data['refresh'])
+        except (InvalidToken, TokenError) as e:
+            return self.build_response(
+                response_status=status.HTTP_403_FORBIDDEN,
+                message='Invalid refresh token'
+            )
+
+        is_allowed = OutstandingToken.objects.filter(
+            token=str(refresh),
+            expires_at__gt=timezone.now(),
+        ).exclude(
+            blacklistedtoken__isnull=False,
+        ).exists()
+
+        if not is_allowed:
+            return self.build_response(
+                response_status=status.HTTP_401_UNAUTHORIZED,
+                message='Refresh token is blacklisted'
+            )
+
+        if not 'phone' in refresh:
+            return self.build_response(
+                response_status=status.HTTP_404_NOT_FOUND,
+                message='User not found'
+            )
+
+        try:
+            user = User.objects.get(phone=refresh['phone'])
+        except User.DoesNotExist:
+            return self.build_response(
+                response_status=status.HTTP_404_NOT_FOUND,
+                message='User not found'
+            )
+
+        access = AccessToken.for_user(user)
+
+        return self.build_response(
+            response_status=status.HTTP_200_OK,
+            message='Access Token Generated Successfully',
+            auth={
+                'access': str(access),
+                'access_expires_in': access.payload['exp'],
+            }
         )

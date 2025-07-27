@@ -7,4 +7,5 @@ app_name = 'user'
 urlpatterns = [
     path('start/', views.StartAuthentication.as_view(), name='start-authentication'),
     path('complete/', views.CompleteAuthentication.as_view(), name='complete-authentication'),
+    path('renew/', views.RenewToken.as_view(), name='renew-token'),
 ]
