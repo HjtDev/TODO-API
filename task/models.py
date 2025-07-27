@@ -21,9 +21,11 @@ class Task(models.Model):
     is_done = models.BooleanField('Is done', default=False)
     is_archived = models.BooleanField('Is archived', default=False)
 
+    remind_at = models.DateTimeField('Remind at', blank=True, null=True)
+    due_at = models.DateTimeField('Expected to finish at', blank=True, null=True)
     created_at = models.DateTimeField('Created at', auto_now_add=True)
     updated_at = models.DateTimeField('Updated at', auto_now=True)
-    completed_at = models.DateTimeField('Completed at')
+    completed_at = models.DateTimeField('Completed at', blank=True, null=True)
 
     @property
     def progress(self):
