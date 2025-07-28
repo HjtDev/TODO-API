@@ -598,6 +598,144 @@ logger = logging.getLogger(__name__)
             401: UNAUTHORIZED_RESPONSE,
             429: TOO_MANY_REQUESTS_RESPONSE
         }
+    ),
+    delete=extend_schema(
+        tags=['Tasks'],
+        summary='Delete task(s)',
+        description='Delete tasks in 3 modes\n1-Single task by ID\n2-Multiple tasks by comma-separated IDs\n3-All tasks with "all" keyword',
+
+        parameters=[
+            OpenApiParameter(
+                name='task_id',
+                description='Task(s) ID(s)',
+                required=True,
+                type=str,
+                examples=[
+                    OpenApiExample(
+                        'Single Task',
+                        value='1'
+                    ),
+                    OpenApiExample(
+                        'Multiple Tasks',
+                        value='1,2'
+                    ),
+                    OpenApiExample(
+                        'All Tasks',
+                        value='all'
+                    ),
+                    OpenApiExample(
+                        'Invalid format: TYPE',
+                        value='a'
+                    ),
+                    OpenApiExample(
+                        'Invalid format: SEPARATOR',
+                        value='1-2'
+                    )
+                ]
+            )
+        ],
+
+        request={
+            'application/json': {
+                'type': 'object',
+                'properties': {
+                    'task_id': {
+                        'type': 'string',
+                        'example': '1',
+                        'description': 'Task(s) ID(s)'
+                    }
+                },
+                'required': ['task_id'],
+                'examples': {
+                    'Single task deletion request': {
+                        'value': {
+                            'task_id': '1'
+                        }
+                    },
+                    'Multiple tasks deletion request': {
+                        'value': {
+                            'task_id': '1,2,3'
+                        }
+                    },
+                    'All tasks deletion request': {
+                        'value': {
+                            'task_id': 'all'
+                        }
+                    },
+                }
+            }
+        },
+
+        responses={
+            200: OpenApiResponse(
+                description='Task deleted successfully',
+                response=dict,
+                examples=[
+                    OpenApiExample(
+                        'Single Task deleted response',
+                        value={
+                            'message': 'Deleted 1 task successfully'
+                        }
+                    ),
+                    OpenApiExample(
+                        'Multiple Tasks deleted response',
+                        value={
+                            'message': 'Deleted <NUMBER_DELETED_TASKS> tasks successfully'
+                        }
+                    ),
+                    OpenApiExample(
+                        'All Tasks deleted successfully',
+                        value={
+                            'message': 'Deleted all(<NUMBER_DELETED_TASKS>) tasks successfully'
+                        }
+                    )
+                ]
+            ),
+            400: OpenApiResponse(
+                description='Failed to delete task(s)',
+                response=dict,
+                examples=[
+                    OpenApiExample(
+                        'No task_id was provided',
+                        value={
+                            'task_id': 'this field is required'
+                        }
+                    ),
+                    OpenApiExample(
+                        'Bad task_id value',
+                        value={
+                            'message': 'Invalid task_id parameter'
+                        }
+                    )
+                ]
+            ),
+            404: OpenApiResponse(
+                description='Task not found',
+                response=dict,
+                examples=[
+                    OpenApiExample(
+                        'Single Task not found',
+                        value={
+                            'message': 'Task not found'
+                        }
+                    ),
+                    OpenApiExample(
+                        'Multiple Tasks not found',
+                        value={
+                            'message': 'No task found to delete'
+                        }
+                    ),
+                    OpenApiExample(
+                        'All Tasks not found',
+                        value={
+                            'message': 'There is no task to delete'
+                        }
+                    )
+                ]
+            ),
+            401: UNAUTHORIZED_RESPONSE,
+            429: TOO_MANY_REQUESTS_RESPONSE
+        }
     )
 )
 class TaskView(APIView, GetDataMixin, ResponseBuilderMixin):
