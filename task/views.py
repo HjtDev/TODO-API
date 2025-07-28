@@ -146,7 +146,7 @@ logger = logging.getLogger(__name__)
     post=extend_schema(
         tags=['Tasks'],
         summary='Task Creation',
-        description='Quick create a task with title or create a full task with all fields',
+        description='Quick create a task with title or create a full task with all fields' + AUTHENTICATION_REQUIRED,
 
         parameters=[
             OpenApiParameter(
@@ -360,7 +360,7 @@ logger = logging.getLogger(__name__)
     patch=extend_schema(
         tags=['Tasks'],
         summary='Task partial update',
-        description='Change task fields(same as task creation fields).',
+        description='Change task fields(same as task creation fields).' + AUTHENTICATION_REQUIRED,
 
         parameters=[
             OpenApiParameter(
@@ -602,7 +602,7 @@ logger = logging.getLogger(__name__)
     delete=extend_schema(
         tags=['Tasks'],
         summary='Delete task(s)',
-        description='Delete tasks in 3 modes\n1-Single task by ID\n2-Multiple tasks by comma-separated IDs\n3-All tasks with "all" keyword',
+        description='Delete tasks in 3 modes\n\n1-Single task by ID\n\n2-Multiple tasks by comma-separated IDs\n\n3-All tasks with "all" keyword' + AUTHENTICATION_REQUIRED,
 
         parameters=[
             OpenApiParameter(
