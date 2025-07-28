@@ -63,6 +63,16 @@ def tasks(user):
         remind_at=REMIND_AT,
         due_at=DUE_AT,
     )
+    Task.objects.create(
+        user=user,
+        title='Task 3',
+        project='test',
+        notes='Task notes',
+        is_done=False,
+        is_archived=False,
+        remind_at=REMIND_AT,
+        due_at=DUE_AT,
+    )
     return Task.objects.all()
 
 @pytest.fixture
@@ -152,8 +162,6 @@ def test_get_all_tasks(client, tasks):
 
 @pytest.mark.django_db
 def test_task_creation(client):
-    VALID_TITLE = 'Task title'
-    INVALID_TITLE = 'Task Title' * 7
 
     # No title test
     response = client.post(
@@ -322,3 +330,81 @@ def test_task_update(client, task):
     assert task.remind_at.replace(tzinfo=None) == datetime.strptime(data['remind_at'], '%Y-%m-%dT%H:%M:%SZ')
     assert task.due_at.replace(tzinfo=None) == datetime.strptime(data['due_at'], '%Y-%m-%dT%H:%M:%SZ')
     assert 'completed_at' in data
+
+
+def test_task_delete(client, task, tasks):
+    user = task.user
+    assert user.tasks.count() >= 3, 'This test requires at least 4 tasks'
+
+    # No task_id
+    response = client.delete(
+        TASK_URL,
+        data={},
+        content_type=CONTENT_TYPE,
+    )
+    assert response.status_code == status.HTTP_400_BAD_REQUEST
+    assert 'task_id' in response.json()
+
+    # Invalid task_id
+    response = client.delete(
+        TASK_URL,
+        data={
+            'task_id': 'abc',
+        },
+        content_type=CONTENT_TYPE,
+    )
+    assert response.status_code == status.HTTP_400_BAD_REQUEST
+
+    # Single task deletion
+    response = client.delete(
+        TASK_URL,
+        data={
+            'task_id': task.id,
+        },
+        content_type=CONTENT_TYPE,
+    )
+    assert response.status_code == status.HTTP_200_OK
+    assert not Task.objects.filter(id=task.id).exists()
+
+    # Multiple task
+    initial_count = tasks.count()
+    response = client.delete(
+        TASK_URL,
+        data={
+            'task_id': ','.join((str(tasks[0].id), str(tasks[1].id))),
+        },
+        content_type=CONTENT_TYPE,
+    )
+    assert response.status_code == status.HTTP_200_OK
+    assert user.tasks.count() == initial_count - 2
+
+    # All task deletion
+    response = client.delete(
+        TASK_URL,
+        data={
+            'task_id': 'all',
+        },
+        content_type=CONTENT_TYPE,
+    )
+    assert response.status_code == status.HTTP_200_OK
+    assert user.tasks.count() == 0
+
+    # Multiple task deletion when no task exists
+    response = client.delete(
+        TASK_URL,
+        data={
+            'task_id': '1,2',
+        },
+        content_type=CONTENT_TYPE,
+    )
+    assert response.status_code == status.HTTP_404_NOT_FOUND
+
+    # All task deletion when no task exists
+    response = client.delete(
+        TASK_URL,
+        data={
+            'task_id': 'all',
+        },
+        content_type=CONTENT_TYPE,
+    )
+    assert response.status_code == status.HTTP_404_NOT_FOUND
