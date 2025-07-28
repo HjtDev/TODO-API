@@ -219,7 +219,6 @@ def test_task_creation(client):
         },
         content_type=CONTENT_TYPE,
     )
-    logger.info(response.json())
     assert response.status_code == status.HTTP_201_CREATED
     data = response.json()
     assert 'message' in data

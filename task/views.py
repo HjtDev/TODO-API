@@ -356,6 +356,248 @@ logger = logging.getLogger(__name__)
             401: UNAUTHORIZED_RESPONSE,
             429: TOO_MANY_REQUESTS_RESPONSE
         }
+    ),
+    patch=extend_schema(
+        tags=['Tasks'],
+        summary='Task partial update',
+        description='Change task fields(same as task creation fields).',
+
+        parameters=[
+            OpenApiParameter(
+                name='task_id',
+                description='Task ID',
+                required=True,
+                type=str,
+                examples=[
+                    OpenApiExample(
+                        'Valid Task ID',
+                        value='1'
+                    ),
+                    OpenApiExample(
+                        'Invalid Task ID',
+                        value='a'
+                    )
+                ],
+            ),
+            OpenApiParameter(
+                name='title',
+                description='Task title',
+                required=False,
+                type=str,
+                examples=[
+                    OpenApiExample(
+                        'Valid Title',
+                        value='Test Task'
+                    ),
+                    OpenApiExample(
+                        'Invalid Title',
+                        value='<TITLE: longer than 50 characters>'
+                    )
+                ]
+            ),
+            OpenApiParameter(
+                name='project',
+                description='Task scope',
+                required=False,
+                type=str,
+                examples=[
+                    OpenApiExample(
+                        'Valid Project',
+                        value='House Chores'
+                    )
+                ]
+            ),
+            OpenApiParameter(
+                name='notes',
+                description='Task notes',
+                required=False,
+                type=str,
+                examples=[
+                    OpenApiExample(
+                        'Valid Notes',
+                        value='Call Mickael too!'
+                    )
+                ]
+            ),
+            OpenApiParameter(
+                name='is_done',
+                description='Task completion status',
+                required=False,
+                type=bool,
+                examples=[
+                    OpenApiExample(
+                        'Task Not Completed',
+                        value=False
+                    ),
+                    OpenApiExample(
+                        'Task Completed',
+                        value=True
+                    )
+                ]
+            ),
+            OpenApiParameter(
+                name='is_archived',
+                description='Used for archived tasks',
+                required=False,
+                type=bool,
+                examples=[
+                    OpenApiExample(
+                        'Task Archived',
+                        value=True
+                    ),
+                    OpenApiExample(
+                        'Task Not Archived',
+                        value=False
+                    )
+                ]
+            ),
+            OpenApiParameter(
+                name='remind_at',
+                description='Task reminder date/time. Format: YYYY-MM-DDTHH:MM:SS',
+                required=False,
+                type=str,
+                examples=[
+                    OpenApiExample(
+                        'Task Reminder',
+                        value='2025-07-28T09:00:00'
+                    )
+                ]
+            ),
+            OpenApiParameter(
+                name='due_at',
+                description='Task due date/time. Format: YYYY-MM-DDTHH:MM:SS',
+                required=False,
+                type=str,
+                examples=[
+                    OpenApiExample(
+                        'Task Due Date',
+                        value='2025-07-28T09:45:00'
+                    )
+                ]
+            )
+        ],
+
+        request={
+            'application/json': {
+                'type': 'object',
+                'properties': {
+                    'task_id': {
+                        'type': 'string',
+                        'example': '1',
+                        'description': 'Task ID'
+                    },
+                    'title': {
+                        'type': 'string',
+                        'example': 'Test Task',
+                        'description': 'Task title'
+                    },
+                    'project': {
+                        'type': 'string',
+                        'example': 'House Chores',
+                        'description': 'Task project'
+                    },
+                    'notes': {
+                        'type': 'string',
+                        'example': 'Call Mickael too!',
+                        'description': 'Task notes'
+                    },
+                    'is_done': {
+                        'type': 'boolean',
+                        'example': False,
+                        'description': 'Task completion status'
+                    },
+                    'is_archived': {
+                        'type': 'boolean',
+                        'example': False,
+                        'description': 'Task archived status'
+                    },
+                    'remind_at': {
+                        'type': 'string',
+                        'example': '2025-07-28T09:00:00',
+                        'description': 'Task reminder date/time'
+                    },
+                    'due_at': {
+                        'type': 'string',
+                        'example': '2025-07-28T09:45:00',
+                        'description': 'Task due date/time'
+                    }
+                },
+                'required': ['task_id'],
+                'examples': {
+                    'Full update': {
+                        'value': {
+                            'task_id': '1',
+                            'title': 'updated title',
+                            'project': 'updated project',
+                            'notes': 'updated notes',
+                            'is_done': True,
+                            'is_archived': False,
+                            'remind_at': '2025-07-27T16:00:00',
+                            'due_at': '2025-07-27T17:00:00'
+                        }
+                    }
+                }
+            }
+        },
+
+        responses={
+            200: OpenApiResponse(
+                description='Task updated successfully',
+                response=dict,
+                examples=[
+                    OpenApiExample(
+                        'Task updated successfully',
+                        value={
+                            'message': 'Task updated',
+                            'task': {
+                                'id': '<TASK_ID>',
+                                'title': '<TITLE>',
+                                'project': '<PROJECT>',
+                                'notes': '<NOTES>',
+                                'is_done': '<IS_DONE>',
+                                'is_archived': '<IS_ARCHIVED>',
+                                'remind_at': '<REMIND_AT>',
+                                'due_at': '<DUE_AT>',
+                                'completed_at': '<COMPLETED_AT>'
+                            }
+                        }
+                    )
+                ]
+            ),
+            400: OpenApiResponse(
+                description='Failed to update task',
+                response=dict,
+                examples=[
+                    OpenApiExample(
+                        'No task_id was provided',
+                        value={
+                            'task_id': 'this field is required'
+                        }
+                    ),
+                    OpenApiExample(
+                        'Bad field value',
+                        value={
+                            'message': 'Failed to update task',
+                            '<FIELD>': ['FIELD_ERRORS']
+                        }
+                    )
+                ]
+            ),
+            404: OpenApiResponse(
+                description='Task not found',
+                response=dict,
+                examples=[
+                    OpenApiExample(
+                        'Task not found',
+                        value={
+                            'message': 'Task not found'
+                        }
+                    )
+                ]
+            ),
+            401: UNAUTHORIZED_RESPONSE,
+            429: TOO_MANY_REQUESTS_RESPONSE
+        }
     )
 )
 class TaskView(APIView, GetDataMixin, ResponseBuilderMixin):
