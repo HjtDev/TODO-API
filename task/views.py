@@ -695,3 +695,60 @@ class TaskView(APIView, GetDataMixin, ResponseBuilderMixin):
                 response_status=status.HTTP_404_NOT_FOUND,
                 message='Task not found',
             )
+
+    def delete(self, request):
+        try:
+            data = self.get_data(request, 'task_id')
+        except ValidationError as e:
+            return self.build_response(
+                response_status=status.HTTP_400_BAD_REQUEST,
+                **e.detail,
+            )
+
+        if (isinstance(data['task_id'], str) and data['task_id'].isdigit()) or isinstance(data['task_id'], int):
+            try:
+                task = request.user.tasks.get(id=data['task_id'])
+                task.delete()
+                return self.build_response(
+                    response_status=status.HTTP_200_OK,
+                    message=f'Deleted 1 task successfully',
+                )
+            except Task.DoesNotExist:
+                return self.build_response(
+                    response_status=status.HTTP_404_NOT_FOUND,
+                    message='Task not found',
+                )
+
+        if ',' in data['task_id']:
+            ids = filter(None, data['task_id'].split(','))
+            tasks = request.user.tasks.filter(id__in=ids)
+            if not tasks.exists():
+                return self.build_response(
+                    response_status=status.HTTP_404_NOT_FOUND,
+                    message='No task found to delete',
+                )
+            to_delete_count = tasks.count()
+            tasks.delete()
+            return self.build_response(
+                response_status=status.HTTP_200_OK,
+                message=f'Deleted {to_delete_count} tasks successfully',
+            )
+
+        if data['task_id'] == 'all':
+            tasks = request.user.tasks.all()
+            if not tasks.exists():
+                return self.build_response(
+                    response_status=status.HTTP_404_NOT_FOUND,
+                    message='There is no task to delete',
+                )
+            task_count = tasks.count()
+            tasks.delete()
+            return self.build_response(
+                response_status=status.HTTP_200_OK,
+                message=f'Deleted all({task_count}) tasks successfully',
+            )
+
+        return self.build_response(
+            response_status=status.HTTP_400_BAD_REQUEST,
+            message='Invalid task_id parameter',
+        )
