@@ -328,6 +328,7 @@ logger = logging.getLogger(__name__)
                                 'is_archived': '<IS_ARCHIVED>',
                                 'remind_at': '<REMIND_AT>',
                                 'due_at': '<DUE_AT>',
+                                'completed_at': '<COMPLETED_AT>'
                             }
                         }
                     )
@@ -422,3 +423,33 @@ class TaskView(APIView, GetDataMixin, ResponseBuilderMixin):
             message='Failed to create task',
             **serializer.errors,
         )
+
+    def patch(self, request):
+        try:
+            data = self.get_data(request, 'task_id')
+        except ValidationError as e:
+            return self.build_response(
+                response_status=status.HTTP_400_BAD_REQUEST,
+                **e.detail,
+            )
+
+        try:
+            task = request.user.tasks.get(id=data['task_id'])
+            serializer = CreateTaskSerializer(instance=task, data=request.data, partial=True)
+            if serializer.is_valid():
+                serializer.save()
+                return self.build_response(
+                    response_status=status.HTTP_200_OK,
+                    message='Task updated',
+                    task=serializer.data
+                )
+            return self.build_response(
+                response_status=status.HTTP_400_BAD_REQUEST,
+                message='Failed to update task',
+                **serializer.errors,
+            )
+        except Task.DoesNotExist:
+            return self.build_response(
+                response_status=status.HTTP_404_NOT_FOUND,
+                message='Task not found',
+            )

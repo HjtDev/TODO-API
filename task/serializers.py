@@ -19,6 +19,6 @@ class QuickTaskSerializer(ModelSerializer):
 class CreateTaskSerializer(ModelSerializer):
     class Meta:
         model = Task
-        fields = ('id', 'title', 'project', 'notes', 'is_done', 'is_archived', 'remind_at', 'due_at')
+        fields = ('id', 'title', 'project', 'notes', 'is_done', 'is_archived', 'remind_at', 'due_at', 'completed_at')
         read_only_fields = ('id',)
-        extra_kwargs = {'id': {'read_only': True}}
+        extra_kwargs = {'id': {'read_only': True}, 'completed_at': {'read_only': True}}
