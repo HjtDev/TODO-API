@@ -12,12 +12,35 @@ from TODO_V2.utility import send_sms
 from drf_spectacular.utils import extend_schema, extend_schema_view, OpenApiResponse, OpenApiExample, OpenApiParameter
 from rest_framework_simplejwt.tokens import RefreshToken, AccessToken, OutstandingToken, BlacklistedToken
 from .serializers import UserSerializer, EditProfileSerializer
-from PIL import Image
 import logging
 
 
 logger = logging.getLogger(__name__)
-REQUIRED_AUTHENTICATION = '\n\nRequires authentication => headers: {"Authorization": "Bearer <ACCESS_TOKEN>"}'
+AUTHENTICATION_REQUIRED = '\n\nRequires authentication => headers: {"Authorization": "Bearer <ACCESS_TOKEN>"}'
+TOO_MANY_REQUESTS_RESPONSE = OpenApiResponse(
+    description='Too Many Requests',
+    response=dict,
+    examples=[
+        OpenApiExample(
+            'Too Many Requests',
+            value={
+                'detail': 'Request was throttled. Expected available in 60 seconds.'
+            }
+        )
+    ]
+)
+UNAUTHORIZED_RESPONSE = OpenApiResponse(
+    description='Unauthorized',
+    response=dict,
+    examples=[
+        OpenApiExample(
+            'Unauthorized',
+            value={
+                'detail': 'Authentication credentials were not provided.'
+            }
+        )
+    ]
+)
 
 
 @extend_schema_view(
@@ -654,7 +677,7 @@ class RenewToken(APIView, GetDataMixin, ResponseBuilderMixin):
     patch=extend_schema(
         tags=['User'],
         summary='Edit user detail',
-        description='Edit user profile details such as name, email and profile picture.' + REQUIRED_AUTHENTICATION,
+        description='Edit user profile details such as name, email and profile picture.' + AUTHENTICATION_REQUIRED,
 
         parameters=[
             OpenApiParameter(
