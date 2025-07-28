@@ -2,7 +2,7 @@ from drf_spectacular.utils import extend_schema_view, extend_schema, OpenApiPara
 from rest_framework import status
 from rest_framework.exceptions import ValidationError
 from rest_framework.permissions import IsAuthenticated
-from .serializers import NormalTaskSerializer, QuickTaskSerializer
+from .serializers import NormalTaskSerializer, QuickTaskSerializer, CreateTaskSerializer
 from .models import Task
 from user.models import User
 from rest_framework.views import APIView
@@ -184,3 +184,28 @@ class TaskView(APIView, GetDataMixin, ResponseBuilderMixin):
                 response_status=status.HTTP_404_NOT_FOUND,
                 message='Task not found',
             )
+
+    def post(self, request):
+        try:
+            data = self.get_data(request, 'title')
+        except ValidationError as e:
+            return self.build_response(
+                response_status=status.HTTP_400_BAD_REQUEST,
+                **e.detail,
+            )
+
+        serializer = CreateTaskSerializer(data=request.data)
+
+        if serializer.is_valid():
+            task = serializer.save(user=request.user)
+            return self.build_response(
+                response_status=status.HTTP_201_CREATED,
+                message='Task created',
+                task=serializer.data
+            )
+
+        return self.build_response(
+            response_status=status.HTTP_400_BAD_REQUEST,
+            message='Failed to create task',
+            **serializer.errors,
+        )
