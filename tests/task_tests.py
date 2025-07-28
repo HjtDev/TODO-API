@@ -3,6 +3,7 @@ from django.utils import timezone
 from rest_framework import status
 from rest_framework.test import APIClient
 from task.models import Task
+from tests.authentication_tests import INVALID_PHONE
 from user.models import User
 from django.urls import reverse
 from django.conf import settings
@@ -15,6 +16,8 @@ logger = logging.getLogger(__name__)
 
 
 VALID_PHONE = '0123456789'
+VALID_TITLE = 'Task title'
+INVALID_TITLE = 'Task Title' * 7
 REMIND_AT = timezone.now()
 DUE_AT = timezone.now() + timedelta(days=1)
 CONTENT_TYPE = 'application/json'
@@ -235,3 +238,88 @@ def test_task_creation(client):
 
     assert datetime.strptime(task['remind_at'], '%Y-%m-%dT%H:%M:%SZ') == db_task.remind_at.replace(tzinfo=None)
     assert datetime.strptime(task['due_at'], '%Y-%m-%dT%H:%M:%SZ') == db_task.due_at.replace(tzinfo=None)
+
+
+def test_task_update(client, task):
+    # No task_id
+    response = client.patch(
+        TASK_URL,
+        data={
+            'title': 'updated title',
+            'project': 'project updated',
+            'notes': 'updated notes',
+            'is_done': True,
+            'is_archived': False,
+            'remind_at': '2025-07-27T16:30:00.00Z',
+            'due_at': '2025-07-27T17:45:00.00Z'
+        },
+        content_type=CONTENT_TYPE,
+    )
+
+    assert response.status_code == status.HTTP_400_BAD_REQUEST
+    assert 'task_id' in response.json()
+
+    # Task does not exist
+    response = client.patch(
+        TASK_URL,
+        data={
+            'task_id': 9999,
+            'title': 'updated title',
+            'project': 'project updated',
+            'notes': 'updated notes',
+            'is_done': True,
+            'is_archived': False,
+            'remind_at': '2025-07-27T16:30:00.00Z',
+            'due_at': '2025-07-27T17:45:00.00Z'
+        },
+        content_type=CONTENT_TYPE,
+    )
+    assert response.status_code == status.HTTP_404_NOT_FOUND
+
+    # Bad input
+    response = client.patch(
+        TASK_URL,
+        data={
+            'task_id': task.id,
+            'title': INVALID_TITLE,
+            'project': 'project updated',
+            'notes': 'updated notes',
+            'is_done': True,
+            'is_archived': False,
+            'remind_at': '2025-07-27T16:30:00.00Z',
+            'due_at': '2025-07-27T17:45:00.00Z'
+        },
+        content_type=CONTENT_TYPE,
+    )
+    assert response.status_code == status.HTTP_400_BAD_REQUEST
+    assert 'title' in response.json()
+
+    # Successful update
+    response = client.patch(
+        TASK_URL,
+        data={
+            'task_id': task.id,
+            'title': 'updated title',
+            'project': 'project updated',
+            'notes': 'updated notes',
+            'is_done': True,
+            'is_archived': False,
+            'remind_at': '2025-07-27T16:30:00.00Z',
+            'due_at': '2025-07-27T17:45:00.00Z'
+        },
+        content_type=CONTENT_TYPE,
+    )
+    assert response.status_code == status.HTTP_200_OK
+    data = response.json()
+    assert 'task' in data
+    data = data['task']
+    task.refresh_from_db()
+
+    assert task.title == data['title'] == 'updated title'
+    assert task.project == data['project'] == 'project updated'
+    assert task.notes == data['notes'] == 'updated notes'
+    assert task.is_done == data['is_done'] == True
+    assert task.is_archived == data['is_archived'] == False
+    assert task.remind_at.replace(tzinfo=None) == datetime.strptime(data['remind_at'], '%Y-%m-%dT%H:%M:%SZ')
+    assert task.due_at.replace(tzinfo=None) == datetime.strptime(data['due_at'], '%Y-%m-%dT%H:%M:%SZ')
+    assert 'completed_at' in data
