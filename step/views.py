@@ -184,6 +184,167 @@ from drf_spectacular.utils import (
             401: UNAUTHORIZED_RESPONSE,
             429: TOO_MANY_REQUESTS_RESPONSE
         }
+    ),
+    post=extend_schema(
+        tags=['Steps'],
+        summary='Create step',
+        description='Create a step and connect it to a task' + AUTHENTICATION_REQUIRED,
+
+        parameters=[
+            OpenApiParameter(
+                name='title',
+                description='Step title. Must be less than 70 characters',
+                required=True,
+                type=str,
+                examples=[
+                    OpenApiExample(
+                        'Valid step title',
+                        value='Exersice for 30min'
+                    ),
+                    OpenApiExample(
+                        'Invalid step title',
+                        value='<TITLE: longer than 70 characters>'
+                    )
+                ]
+            ),
+            OpenApiParameter(
+                name='task_id',
+                description='The task\'s ID that is going to have this step',
+                required=True,
+                type=str,
+                examples=[
+                    OpenApiExample(
+                        'Valid task id',
+                        value='1'
+                    )
+                ]
+            ),
+            OpenApiParameter(
+                name='is_done',
+                description='To set the initial state of the step. Default: False',
+                required=False,
+                type=bool,
+                examples=[
+                    OpenApiExample(
+                        'Step is done',
+                        value=True
+                    ),
+                    OpenApiExample(
+                        'Step is not done',
+                        value=False
+                    )
+                ]
+            )
+        ],
+
+        request={
+            'application/json': {
+                'type': 'object',
+                'properties': {
+                    'task_id': {
+                        'type': 'string',
+                        'example': '1',
+                        'description': 'Step will connect to this task',
+                    },
+                    'title': {
+                        'type': 'string',
+                        'example': 'Step 1',
+                        'description': 'Step title',
+                    },
+                    'is_done': {
+                        'type': 'boolean',
+                        'example': False,
+                        'description': 'Step initial state',
+                    },
+                },
+                'required': ['task_id', 'title'],
+                'examples': {
+                    'Valid step request #1': {
+                        'value': {
+                            'task_id': '1',
+                            'title': 'my step',
+                        },
+                        'description': 'Valid request without is_done'
+                    },
+                    'Valid step request #2': {
+                        'value': {
+                            'task_id': '1',
+                            'title': 'my step',
+                            'is_done': True,
+                        },
+                        'description': 'Valid request with is_done'
+                    }
+                }
+            }
+        },
+
+        responses={
+            201: OpenApiResponse(
+                description='Step created successfully',
+                response=dict,
+                examples=[
+                    OpenApiExample(
+                        'Success response',
+                        value={
+                            'message': 'Step created successfully',
+                            'step': {
+                                'id': '<STEP_ID>',
+                                'title': '<STEP_TITLE>',
+                                'is_done': '<STEP_IS_DONE>',
+                                'created_at': '<STEP_CREATED_AT>',
+                                'updated_at': '<STEP_UPDATED_AT>',
+                                'completed_at': '<STEP_COMPLETED_AT>',
+                                'task': '<TASK_ID>',
+                            }
+                        }
+                    )
+                ]
+            ),
+            400: OpenApiResponse(
+                description='Bad request',
+                response=dict,
+                examples=[
+                    OpenApiExample(
+                        'No title was provided',
+                        value={
+                            'title': 'this field is required'
+                        }
+                    ),
+                    OpenApiExample(
+                        'No task_id was provided',
+                        value={
+                            'task_id': 'this field is required'
+                        }
+                    ),
+                    OpenApiExample(
+                        'Invalid task_id parameter',
+                        value={
+                            'message': 'Invalid "task_id" parameter'
+                        }
+                    ),
+                    OpenApiExample(
+                        'Invalid field(title/is_done) value',
+                        value={
+                            '<FIELD>': ['FIELD_ERROR']
+                        }
+                    )
+                ]
+            ),
+            404: OpenApiResponse(
+                description='Task not found',
+                response=dict,
+                examples=[
+                    OpenApiExample(
+                        'Task not found',
+                        value={
+                            'message': 'Task not found'
+                        }
+                    )
+                ]
+            ),
+            401: UNAUTHORIZED_RESPONSE,
+            429: TOO_MANY_REQUESTS_RESPONSE
+        }
     )
 )
 class StepView(APIView, GetDataMixin, ResponseBuilderMixin):
