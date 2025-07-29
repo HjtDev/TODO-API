@@ -143,3 +143,89 @@ def test_get_all_steps(client, task):
         assert serializer.is_valid()
         assert serializer.instance in task_steps
 
+
+@pytest.mark.django_db
+def test_create_no_parameter(client):
+    response = client.post(
+        STEPS_URL,
+        data={},
+        content_type=CONTENT_TYPE
+    )
+    assert response.status_code == status.HTTP_400_BAD_REQUEST
+
+    response = client.post(
+        STEPS_URL,
+        data={
+            'title': 'Step 1'
+        },
+        content_type=CONTENT_TYPE
+    )
+    assert response.status_code == status.HTTP_400_BAD_REQUEST
+
+    response = client.post(
+        STEPS_URL,
+        data={
+            'task_id': '1'
+        },
+        content_type=CONTENT_TYPE
+    )
+    assert response.status_code == status.HTTP_400_BAD_REQUEST
+
+
+@pytest.mark.django_db
+def test_create_invalid_task_id(client):
+    response = client.post(
+        STEPS_URL,
+        data={
+            'title': 'Step 1',
+            'task_id': 'task:1'
+        }
+    )
+    assert response.status_code == status.HTTP_400_BAD_REQUEST
+
+    response = client.post(
+        STEPS_URL,
+        data={
+            'title': 'Step 1',
+            'task_id': '9999'
+        }
+    )
+    assert response.status_code == status.HTTP_404_NOT_FOUND
+
+
+@pytest.mark.django_db
+def test_create_invalid_parameter(client, task):
+    response = client.post(
+        STEPS_URL,
+        data={
+            'title': 'Step 1' * 15,
+            'task_id': task.id
+        }
+    )
+    assert response.status_code == status.HTTP_400_BAD_REQUEST
+    assert 'title' in response.json()
+
+
+@pytest.mark.django_db
+def test_create_step(client, task):
+    response = client.post(
+        STEPS_URL,
+        data={
+            'title': 'Step 1',
+            'task_id': task.id
+        }
+    )
+
+    assert response.status_code == status.HTTP_201_CREATED
+
+    data = response.json()
+
+    assert 'step' in data
+
+    data = data['step']
+
+    assert 'id' in data
+
+    assert Step.objects.filter(id=data['id']).exists(), 'Step was not created properly'
+
+    assert task.steps.filter(id=data['id']).exists(), 'Step was not added to task properly'
