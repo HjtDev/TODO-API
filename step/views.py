@@ -8,7 +8,7 @@ from TODO_V2.mixins import GetDataMixin, ResponseBuilderMixin
 from rest_framework.permissions import IsAuthenticated
 from user.views import AUTHENTICATION_REQUIRED, UNAUTHORIZED_RESPONSE, TOO_MANY_REQUESTS_RESPONSE
 from drf_spectacular.utils import (
-    extend_schema, extend_schema_view, OpenApiExample, OpenApiResponse, OpenApiParameter
+    extend_schema, extend_schema_view, OpenApiExample, OpenApiResponse, OpenApiParameter, OpenApiRequest
 )
 
 
@@ -482,6 +482,161 @@ from drf_spectacular.utils import (
                         'Step not found',
                         value={
                             'message': 'Step not found'
+                        }
+                    )
+                ]
+            ),
+            401: UNAUTHORIZED_RESPONSE,
+            429: TOO_MANY_REQUESTS_RESPONSE
+        }
+    ),
+    delete=extend_schema(
+        tags=['Steps'],
+        summary='Delete step(s)',
+        description='Delete steps in 4 modes:\n\n1-Single step by id\n\n2-Multiple steps by comma-separated IDs\n\n3-All steps connected to a task\n\n4-All steps connected to authenticated user' + AUTHENTICATION_REQUIRED,
+
+        parameters=[
+            OpenApiParameter(
+                name='selector',
+                description='Select steps to delete',
+                required=True,
+                type=str,
+                examples=[
+                    OpenApiExample(
+                        'Single step(<STEP_ID>)',
+                        value='1'
+                    ),
+                    OpenApiExample(
+                        'Multiple step(<STEP_ID,STEP_ID,...>)',
+                        value='1,2,3'
+                    ),
+                    OpenApiExample(
+                        'Task steps(<task:TASK_ID>)',
+                        value='task:1'
+                    ),
+                    OpenApiExample(
+                        'All steps',
+                        value='all'
+                    )
+                ]
+            )
+        ],
+
+        request={
+            'application/json': {
+                'type': 'object',
+                'properties': {
+                    'selector': {
+                        'type': 'string',
+                        'example': '1',
+                        'description': 'Steps to delete',
+                    }
+                },
+                'required': ['selector'],
+                'examples': {
+                    'Valid single step request': {
+                        'value': {
+                            'selector': '1'
+                        },
+                        'description': 'Removes the step with ID 1 if it exists'
+                    },
+                    'Valid multiple steps request': {
+                        'value': {
+                            'selector': '1,2,3'
+                        },
+                        'description': 'Removes the steps with IDs of 1, 2 and 3 if they exist'
+                    },
+                    'Valid task steps request': {
+                        'value': {
+                            'selector': 'task:1'
+                        },
+                        'description': 'Removes all steps of task with ID 1 if it exists'
+                    },
+                    'Valid all steps request': {
+                        'value': {
+                            'selector': 'all'
+                        },
+                        'description': 'Removes all the steps connected to the authenticated user'
+                    },
+                }
+            }
+        },
+
+        responses={
+            200: OpenApiResponse(
+                description='Step(s) deleted successfully',
+                response=dict,
+                examples=[
+                    OpenApiExample(
+                        'Single step deletion response',
+                        value={
+                            'message': 'Deleted 1 step successfully'
+                        }
+                    ),
+                    OpenApiExample(
+                        'Multiple step deletion response',
+                        value={
+                            'message': 'Deleted <NUMBER_OF_STEPS_DELETED> step(s) successfully'
+                        }
+                    ),
+                    OpenApiExample(
+                        'Task step deletion response',
+                        value={
+                            'message': 'Deleted <NUMBER_OF_STEPS_DELETED> step(s) successfully'
+                        }
+                    ),
+                    OpenApiExample(
+                        'All step deletion response',
+                        value={
+                            'message': 'Deleted all(<NUMBER_OF_STEPS_DELETED) step(s) successfully'
+                        }
+                    )
+                ]
+            ),
+            400: OpenApiResponse(
+                description='Bad request',
+                response=dict,
+                examples=[
+                    OpenApiExample(
+                        'No selector was provided',
+                        value={
+                            'selector': 'this field is required'
+                        }
+                    ),
+                    OpenApiExample(
+                        'Invalid task ID',
+                        value={
+                            'message': 'Invalid task_id'
+                        }
+                    ),
+                    OpenApiExample(
+                        'Invalid selector parameter',
+                        value={
+                            'message': 'Invalid "selector" parameter'
+                        }
+                    )
+                ]
+            ),
+            404: OpenApiResponse(
+                description='Not found',
+                response=dict,
+                examples=[
+                    OpenApiExample(
+                        'Step not found',
+                        value={
+                            'message': 'Step not found'
+                        }
+                    ),
+                    OpenApiExample(
+                        'Steps not found',
+                        value={
+                            'message': 'No steps found to delete'
+                        }
+                    ),
+                    OpenApiExample(
+                        'Task not found',
+                        value={
+                            'message': 'Task not found'
                         }
                     )
                 ]
