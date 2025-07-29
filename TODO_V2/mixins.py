@@ -18,7 +18,7 @@ class GetDataMixin:
         return True if data in ('True', 'true', 'yes', 'y', '1', 1) else False
 
     def is_id(self, value) -> bool:
-        return (isinstance(value, str) and value.isdigit()) or (isinstance(value, int) and value > 0)
+        return (isinstance(value, str) and value.isdigit() and int(value) > 0) or (isinstance(value, int) and value > 0)
 
 
 class ResponseBuilderMixin:

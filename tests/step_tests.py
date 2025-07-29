@@ -6,7 +6,10 @@ from user.models import User
 from django.urls import reverse
 from rest_framework import status
 from step.serializers import StepSerializer
-import pytest
+import pytest, logging
+
+
+logger = logging.getLogger(__name__)
 
 
 STEPS_URL = reverse('step:step-endpoints')
@@ -25,6 +28,14 @@ def task(user):
 @pytest.fixture
 def step(task):
     return Step.objects.create(title='Step 1', task=task)
+
+
+@pytest.fixture
+def steps(task):
+    Step.objects.create(title='Step 1', task=task)
+    Step.objects.create(title='Step 2', task=task)
+    Step.objects.create(title='Step 3', task=task)
+    return Step.objects.all()
 
 
 @pytest.fixture
@@ -306,3 +317,113 @@ def test_edit_step(client, step):
     step.refresh_from_db()
 
     assert data == StepSerializer(instance=step).data, 'Invalid response from endpoint'
+
+
+@pytest.mark.django_db
+def test_delete_no_parameter(client):
+    response = client.delete(
+        STEPS_URL,
+        data={},
+        content_type=CONTENT_TYPE
+    )
+    assert response.status_code == status.HTTP_400_BAD_REQUEST
+    assert 'selector' in response.json()
+
+
+@pytest.mark.django_db
+@pytest.mark.parametrize(
+    'selector',
+    ['task:all', 'task-1', 'task:-1', '-3', 0, -1, 'al']
+)
+def test_delete_invalid_parameter(client, selector):
+    response = client.delete(
+        STEPS_URL,
+        data={
+            'selector': selector
+        }
+    )
+    logger.info(selector)
+    logger.info(response.json())
+    assert response.status_code == status.HTTP_400_BAD_REQUEST
+
+
+@pytest.mark.django_db
+@pytest.mark.parametrize(
+    'selector',
+    ['1', '1,2,3', 'task:1']
+)
+def test_delete_does_not_exist(client, selector):
+    response = client.delete(
+        STEPS_URL,
+        data={
+            'selector': selector
+        },
+        content_type=CONTENT_TYPE
+    )
+    assert response.status_code == status.HTTP_404_NOT_FOUND
+
+
+@pytest.mark.django_db
+def test_delete_single_step(client, step):
+    response = client.delete(
+        STEPS_URL,
+        data={
+            'selector': step.id,
+        },
+        content_type=CONTENT_TYPE
+    )
+    assert response.status_code == status.HTTP_200_OK
+    assert not Step.objects.filter(id=step.id).exists()
+
+
+@pytest.mark.django_db
+def test_delete_multiple_steps(client, steps):
+    response = client.delete(
+        STEPS_URL,
+        data={
+            'selector': ','.join(str(steps.values_list('id', flat=True))),
+        },
+        content_type=CONTENT_TYPE
+    )
+    assert response.status_code == status.HTTP_200_OK
+
+    for step in steps:
+        assert not Step.objects.filter(id=step.id).exists()
+
+
+@pytest.mark.django_db
+def test_delete_task_steps(client, steps):
+    assert steps.count()
+
+    step_task = steps[0].task
+    assert len(list(filter(lambda s: s.task == step_task, steps[1:]))) == steps.count() - 1, 'All steps should have the same task'
+
+
+    response = client.delete(
+        STEPS_URL,
+        data={
+            'selector': f'task:{step_task.id}',
+        }
+    )
+    assert response.status_code == status.HTTP_200_OK
+
+    step_task.refresh_from_db()
+
+    assert step_task.steps.count() == 0
+
+
+@pytest.mark.django_db
+def test_delete_all_steps(client, steps):
+    assert steps.count()
+
+    response = client.delete(
+        STEPS_URL,
+        data={
+            'selector': 'all'
+        },
+        content_type=CONTENT_TYPE
+    )
+    assert response.status_code == status.HTTP_200_OK
+
+    for step in steps:
+        assert not Step.objects.filter(id=step.id).exists()

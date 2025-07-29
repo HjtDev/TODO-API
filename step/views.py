@@ -656,7 +656,7 @@ class StepView(APIView, GetDataMixin, ResponseBuilderMixin):
                 )
 
         if ',' in selector:
-            ids = filter(None, selector.split(','))
+            ids = filter(self.is_id, selector.split(','))
             steps = Step.objects.filter(id__in=ids, task__user=request.user)
             if not steps.exists():
                 return self.build_response(
@@ -672,6 +672,12 @@ class StepView(APIView, GetDataMixin, ResponseBuilderMixin):
 
         if 'task:' in selector:
             task_id = selector.split(':')[1]
+
+            if not self.is_id(task_id):
+                return self.build_response(
+                    response_status=status.HTTP_400_BAD_REQUEST,
+                    message='Invalid task_id'
+                )
 
             try:
                 task = request.user.tasks.get(id=task_id)
