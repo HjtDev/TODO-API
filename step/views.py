@@ -345,6 +345,150 @@ from drf_spectacular.utils import (
             401: UNAUTHORIZED_RESPONSE,
             429: TOO_MANY_REQUESTS_RESPONSE
         }
+    ),
+    patch=extend_schema(
+        tags=['Steps'],
+        summary='Edit step properties',
+        description='Partially edit step properties' + AUTHENTICATION_REQUIRED,
+
+        parameters=[
+            OpenApiParameter(
+                name='step_id',
+                description='The ID of the step',
+                required=True,
+                type=str,
+                examples=[
+                    OpenApiExample(
+                        'Valid step id',
+                        value='1'
+                    )
+                ]
+            ),
+            OpenApiParameter(
+                name='title',
+                description='The new title of the step',
+                required=False,
+                type=str,
+                examples=[
+                    OpenApiExample(
+                        'Valid title',
+                        value='<TITLE: anything less than 70 characters>',
+                    )
+                ]
+            ),
+            OpenApiParameter(
+                name='is_done',
+                description='New state of the step',
+                required=False,
+                type=bool,
+                examples=[
+                    OpenApiExample(
+                        'Step is done',
+                        value=True
+                    ),
+                    OpenApiExample(
+                        'Step is not done',
+                        value=False
+                    )
+                ]
+            )
+        ],
+
+        request={
+            'application/json': {
+                'type': 'object',
+                'properties': {
+                    'step_id': {
+                        'type': 'string',
+                        'example': '1',
+                        'description': 'ID of the step you need to edit',
+                    },
+                    'title': {
+                        'type': 'string',
+                        'example': 'Step 1',
+                        'description': 'New step title',
+                    },
+                    'is_done': {
+                        'type': 'boolean',
+                        'example': False,
+                        'description': 'new step state',
+                    },
+                },
+                'required': ['step_id'],
+                'examples': {
+                    'Valid request': {
+                        'value': {
+                            'step_id': '1',
+                            'title': 'new title',
+                            'is_done': False,
+                        },
+                        'description': 'Changes the title and is_done status'
+                    }
+                }
+            }
+        },
+
+        responses={
+            200: OpenApiResponse(
+                description='Step updated successfully',
+                response=dict,
+                examples=[
+                    OpenApiExample(
+                        'Success',
+                        value={
+                            'message': 'Step updated successfully',
+                            'step': {
+                                'id': '<STEP_ID>',
+                                'title': '<NEW_STEP_TITLE>',
+                                'is_done': '<NEW_STEP_IS_DONE>',
+                                'created_at': '<STEP_CREATED_AT>',
+                                'updated_at': '<STEP_UPDATED_AT>',
+                                'completed_at': '<STEP_COMPLETED_AT>',
+                                'task': '<TASK_ID>',
+                            }
+                        }
+                    )
+                ]
+            ),
+            400: OpenApiResponse(
+                description='Bad request',
+                response=dict,
+                examples=[
+                    OpenApiExample(
+                        'No step_id was provided',
+                        value={
+                            'step_id': 'this field is required'
+                        }
+                    ),
+                    OpenApiExample(
+                        'Invalid step_id parameter',
+                        value={
+                            'message': 'Invalid "step_id" parameter'
+                        }
+                    ),
+                    OpenApiExample(
+                        'Invalid field(title/is_done) value',
+                        value={
+                            '<FIELD>': ['FIELD_ERROR']
+                        }
+                    )
+                ]
+            ),
+            404: OpenApiResponse(
+                description='Step not found',
+                response=dict,
+                examples=[
+                    OpenApiExample(
+                        'Step not found',
+                        value={
+                            'message': 'Step not found'
+                        }
+                    )
+                ]
+            ),
+            401: UNAUTHORIZED_RESPONSE,
+            429: TOO_MANY_REQUESTS_RESPONSE
+        }
     )
 )
 class StepView(APIView, GetDataMixin, ResponseBuilderMixin):
