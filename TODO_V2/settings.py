@@ -51,7 +51,8 @@ INSTALLED_APPS = [
     'rest_framework_simplejwt.token_blacklist',
     'drf_spectacular',
     'user.apps.UserConfig',
-    'task.apps.TaskConfig'
+    'task.apps.TaskConfig',
+    'step.apps.StepConfig'
 ]
 
 MIDDLEWARE = [
