@@ -175,7 +175,8 @@ REST_FRAMEWORK = {
         'auth_verify': '10/min',
         'auth_renew': '1/hour',
         'auth_edit_profile': '3/minute',
-        'tasks': '1/sec'
+        'tasks': '15/min',
+        'steps': '30/min'
     },
     'DEFAULT_SCHEMA_CLASS': 'drf_spectacular.openapi.AutoSchema',
 }

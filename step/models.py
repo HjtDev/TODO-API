@@ -22,4 +22,4 @@ class Step(models.Model):
     completed_at = models.DateTimeField('Completed at', null=True, blank=True)
 
     def __str__(self):
-        return f'<Step: {self.title}>'
+        return self.title
