@@ -247,3 +247,43 @@ class StepView(APIView, GetDataMixin, ResponseBuilderMixin):
             response_status=status.HTTP_400_BAD_REQUEST,
             message='Invalid "get" parameter'
         )
+
+
+    def post(self, request):
+        try:
+            data = self.get_data(request, 'title', 'task_id')
+        except ValidationError as e:
+            return self.build_response(
+                response_status=status.HTTP_400_BAD_REQUEST,
+                **e.detail
+            )
+
+        task_id = data['task_id']
+        if (isinstance(task_id, str) and task_id.isdigit()) or isinstance(task_id, int):
+            try:
+                task = request.user.tasks.get(id=task_id)
+            except Task.DoesNotExist:
+                return self.build_response(
+                    response_status=status.HTTP_404_NOT_FOUND,
+                    message='Task not found'
+                )
+        else:
+            return self.build_response(
+                response_status=status.HTTP_400_BAD_REQUEST,
+                message='Invalid "task_id" parameter'
+            )
+
+        serializer = StepSerializer(data=request.data)
+        if not serializer.is_valid():
+            return self.build_response(
+                response_status=status.HTTP_400_BAD_REQUEST,
+                **serializer.errors
+            )
+
+        serializer.save(task=task)
+
+        return self.build_response(
+            response_status=status.HTTP_201_CREATED,
+            message='Step created successfully',
+            step=serializer.data
+        )
