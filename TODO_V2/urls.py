@@ -26,6 +26,7 @@ urlpatterns = [
     path('api/v2/docs/', SpectacularSwaggerView.as_view(), name='swagger'),
     path('api/v2/auth/', include('user.urls', namespace='user')),
     path('api/v2/tasks/', include('task.urls', namespace='task')),
+    path('api/v2/steps/', include('step.urls', namespace='step')),
 ]
 
 if settings.DEBUG:
