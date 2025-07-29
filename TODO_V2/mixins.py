@@ -17,6 +17,9 @@ class GetDataMixin:
     def convert_data_to_bool(self, data: str) -> bool:
         return True if data in ('True', 'true', 'yes', 'y', '1', 1) else False
 
+    def is_id(self, value) -> bool:
+        return (isinstance(value, str) and value.isdigit()) or isinstance(value, int)
+
 
 class ResponseBuilderMixin:
     def build_response(self, response_status: status = status.HTTP_200_OK, **kwargs):

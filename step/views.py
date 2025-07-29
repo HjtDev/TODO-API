@@ -448,3 +448,42 @@ class StepView(APIView, GetDataMixin, ResponseBuilderMixin):
             message='Step created successfully',
             step=serializer.data
         )
+
+    def patch(self, request):
+        try:
+            step_id = self.get_data(request, 'step_id')['step_id']
+        except ValidationError as e:
+            return self.build_response(
+                response_status=status.HTTP_400_BAD_REQUEST,
+                **e.detail
+            )
+
+        if not self.is_id(step_id):
+            return self.build_response(
+                response_status=status.HTTP_400_BAD_REQUEST,
+                message='Invalid "step_id" parameter'
+            )
+
+        try:
+            step = Step.objects.get(id=step_id, task__user=request.user)
+        except Step.DoesNotExist:
+            return self.build_response(
+                response_status=status.HTTP_404_NOT_FOUND,
+                message='Step not found'
+            )
+
+        serializer = StepSerializer(instance=step, data=request.data, partial=True)
+
+        if not serializer.is_valid():
+            return self.build_response(
+                response_status=status.HTTP_400_BAD_REQUEST,
+                **serializer.errors
+            )
+
+        serializer.save()
+
+        return self.build_response(
+            response_status=status.HTTP_200_OK,
+            message='Step updated successfully',
+            step=serializer.data
+        )
