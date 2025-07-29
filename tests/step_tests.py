@@ -229,3 +229,80 @@ def test_create_step(client, task):
     assert Step.objects.filter(id=data['id']).exists(), 'Step was not created properly'
 
     assert task.steps.filter(id=data['id']).exists(), 'Step was not added to task properly'
+
+
+@pytest.mark.django_db
+def test_edit_no_parameter(client):
+    response = client.patch(
+        STEPS_URL,
+        data={},
+        content_type=CONTENT_TYPE
+    )
+    assert response.status_code == status.HTTP_400_BAD_REQUEST
+    assert 'step_id' in response.json()
+
+
+@pytest.mark.django_db
+@pytest.mark.parametrize(
+    'step_id',
+    ['id:1', 'a', -1, ' ', '-1']
+)
+def test_edit_invalid_parameter(client, step_id):
+    response = client.patch(
+        STEPS_URL,
+        data={
+            'step_id': step_id
+        },
+        content_type=CONTENT_TYPE
+    )
+    assert response.status_code == status.HTTP_400_BAD_REQUEST
+
+
+@pytest.mark.django_db
+def test_edit_step_does_not_exist(client):
+    response = client.patch(
+        STEPS_URL,
+        data={
+            'step_id': '999'
+        },
+        content_type=CONTENT_TYPE
+    )
+    assert response.status_code == status.HTTP_404_NOT_FOUND
+
+
+@pytest.mark.django_db
+def test_edit_bad_parameter(client, step):
+    response = client.patch(
+        STEPS_URL,
+        data={
+            'step_id': step.id,
+            'title': 'Step 1' * 15
+        },
+        content_type=CONTENT_TYPE
+    )
+
+    assert response.status_code == status.HTTP_400_BAD_REQUEST
+    assert 'title' in response.json()
+
+
+@pytest.mark.django_db
+def test_edit_step(client, step):
+    response = client.patch(
+        STEPS_URL,
+        data={
+            'step_id': step.id,
+            'title': 'edited',
+            'is_done': not step.is_done
+        }
+    )
+    assert response.status_code == status.HTTP_200_OK
+
+    data = response.json()
+
+    assert 'step' in data
+
+    data = data['step']
+
+    step.refresh_from_db()
+
+    assert data == StepSerializer(instance=step).data, 'Invalid response from endpoint'
