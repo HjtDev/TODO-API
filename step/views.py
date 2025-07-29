@@ -631,3 +631,73 @@ class StepView(APIView, GetDataMixin, ResponseBuilderMixin):
             message='Step updated successfully',
             step=serializer.data
         )
+
+    def delete(self, request):
+        try:
+            selector = self.get_data(request, 'selector')['selector']
+        except ValidationError as e:
+            return self.build_response(
+                response_status=status.HTTP_400_BAD_REQUEST,
+                **e.detail
+            )
+
+        if self.is_id(selector):
+            try:
+                step = Step.objects.get(id=selector, task__user=request.user)
+                step.delete()
+                return self.build_response(
+                    response_status=status.HTTP_200_OK,
+                    message='Deleted 1 step successfully'
+                )
+            except Step.DoesNotExist:
+                return self.build_response(
+                    response_status=status.HTTP_404_NOT_FOUND,
+                    message='Step not found'
+                )
+
+        if ',' in selector:
+            ids = filter(None, selector.split(','))
+            steps = Step.objects.filter(id__in=ids, task__user=request.user)
+            if not steps.exists():
+                return self.build_response(
+                    response_status=status.HTTP_404_NOT_FOUND,
+                    message='No steps found to delete'
+                )
+            to_delete = steps.count()
+            steps.delete()
+            return self.build_response(
+                response_status=status.HTTP_200_OK,
+                message=f'Deleted {to_delete} step(s) successfully'
+            )
+
+        if 'task:' in selector:
+            task_id = selector.split(':')[1]
+
+            try:
+                task = request.user.tasks.get(id=task_id)
+                steps = task.steps.all()
+                to_delete = steps.count()
+                steps.delete()
+                return self.build_response(
+                    response_status=status.HTTP_200_OK,
+                    message=f'Deleted {to_delete} step(s) successfully'
+                )
+            except Task.DoesNotExist:
+                return self.build_response(
+                    response_status=status.HTTP_404_NOT_FOUND,
+                    message='Task not found'
+                )
+
+        if selector == 'all':
+            steps = Step.objects.filter(task__user=request.user)
+            to_delete = steps.count()
+            steps.delete()
+            return self.build_response(
+                response_status=status.HTTP_200_OK,
+                message=f'Deleted all({to_delete}) step(s) successfully'
+            )
+
+        return self.build_response(
+            response_status=status.HTTP_400_BAD_REQUEST,
+            message='Invalid "selector" parameter'
+        )
