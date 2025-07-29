@@ -1,5 +1,11 @@
 from django.contrib import admin
 from .models import Task
+from step.models import Step
+
+
+class StepInline(admin.StackedInline):
+    model = Step
+    extra = 0
 
 
 @admin.register(Task)
@@ -14,6 +20,7 @@ class TaskAdmin(admin.ModelAdmin):
     readonly_fields = ('created_at', 'updated_at', 'get_progress')
     search_fields = ('title', 'user__name', 'project')
     ordering = ('user', '-completed_at')
+    inlines = (StepInline,)
 
     fieldsets = (
         ('General', {'fields': ('user', 'title', 'project', 'notes')}),
