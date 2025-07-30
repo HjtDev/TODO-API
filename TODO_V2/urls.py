@@ -27,6 +27,7 @@ urlpatterns = [
     path('api/v2/auth/', include('user.urls', namespace='user')),
     path('api/v2/tasks/', include('task.urls', namespace='task')),
     path('api/v2/steps/', include('step.urls', namespace='step')),
+    path('api/v2/tags/', include('tag.urls', namespace='tag')),
 ]
 
 if settings.DEBUG:

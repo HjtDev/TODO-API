@@ -52,7 +52,8 @@ INSTALLED_APPS = [
     'drf_spectacular',
     'user.apps.UserConfig',
     'task.apps.TaskConfig',
-    'step.apps.StepConfig'
+    'step.apps.StepConfig',
+    'tag.apps.TagConfig'
 ]
 
 MIDDLEWARE = [
