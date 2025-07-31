@@ -53,7 +53,8 @@ INSTALLED_APPS = [
     'user.apps.UserConfig',
     'task.apps.TaskConfig',
     'step.apps.StepConfig',
-    'tag.apps.TagConfig'
+    'tag.apps.TagConfig',
+    'contact.apps.ContactConfig'
 ]
 
 MIDDLEWARE = [
