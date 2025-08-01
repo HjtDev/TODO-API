@@ -28,6 +28,7 @@ urlpatterns = [
     path('api/v2/tasks/', include('task.urls', namespace='task')),
     path('api/v2/steps/', include('step.urls', namespace='step')),
     path('api/v2/tags/', include('tag.urls', namespace='tag')),
+    path('api/v2/contacts/', include('contact.urls', namespace='contact')),
 ]
 
 if settings.DEBUG:
