@@ -179,7 +179,8 @@ REST_FRAMEWORK = {
         'auth_edit_profile': '3/minute',
         'tasks': '15/min',
         'steps': '30/min',
-        'tags': '20/min'
+        'tags': '20/min',
+        'contacts': '10/min',
     },
     'DEFAULT_SCHEMA_CLASS': 'drf_spectacular.openapi.AutoSchema',
 }

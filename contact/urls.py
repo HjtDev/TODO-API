@@ -5,5 +5,5 @@ from . import views
 app_name = 'contact'
 
 urlpatterns = [
-
+    path('', views.ContactAPI.as_view(), name='contact-endpoints'),
 ]
