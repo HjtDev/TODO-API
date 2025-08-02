@@ -751,7 +751,7 @@ class TaskView(APIView, GetDataMixin, ResponseBuilderMixin):
                 **e.detail,
             )
 
-        if data['get'] != 'all' and not data['get'].isdigit():
+        if data['get'] != 'all' and not self.is_id(data['get']):
             return self.build_response(
                 response_status=status.HTTP_400_BAD_REQUEST,
                 message='Invalid "get" parameter ("all" or "task_id")',
@@ -807,6 +807,8 @@ class TaskView(APIView, GetDataMixin, ResponseBuilderMixin):
     def patch(self, request):
         try:
             data = self.get_data(request, 'task_id')
+            if not self.is_id(data['task_id']):
+                raise ValidationError({'task_id': 'Invalid ID'})
         except ValidationError as e:
             return self.build_response(
                 response_status=status.HTTP_400_BAD_REQUEST,
@@ -843,7 +845,7 @@ class TaskView(APIView, GetDataMixin, ResponseBuilderMixin):
                 **e.detail,
             )
 
-        if (isinstance(data['task_id'], str) and data['task_id'].isdigit()) or isinstance(data['task_id'], int):
+        if self.is_id(data['task_id']):
             try:
                 task = request.user.tasks.get(id=data['task_id'])
                 task.delete()
@@ -858,7 +860,7 @@ class TaskView(APIView, GetDataMixin, ResponseBuilderMixin):
                 )
 
         if ',' in data['task_id']:
-            ids = filter(None, data['task_id'].split(','))
+            ids = filter(self.is_id, data['task_id'].split(','))
             tasks = request.user.tasks.filter(id__in=ids)
             if not tasks.exists():
                 return self.build_response(
