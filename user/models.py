@@ -1,3 +1,4 @@
+from django.core.exceptions import ValidationError
 from django.db import models
 from django.contrib.auth.models import BaseUserManager, AbstractBaseUser, PermissionsMixin
 from django.utils import timezone
@@ -34,8 +35,20 @@ def profile_directory_path(instance, filename):
         filename
     )
 
+def phone_validator(value):
+    if not value.isdigit():
+        raise ValidationError('Phone number must only contain numbers.')
+
+    if not value.startswith('09'):
+        raise ValidationError('Phone number must start with 09.')
+
+    if len(value) != 11:
+        raise ValidationError('Phone number must contain 11 digits.')
+
+    return value
+
 class User(AbstractBaseUser, PermissionsMixin):
-    phone = models.CharField(max_length=11, unique=True, verbose_name='Phone number')
+    phone = models.CharField(max_length=11, unique=True, verbose_name='Phone number', validators=[phone_validator])
     email = models.EmailField(max_length=255, blank=True, null=True, verbose_name='Email')
     name = models.CharField(max_length=60, verbose_name='Name', blank=True, null=True)
     profile = models.ImageField(upload_to=profile_directory_path, default='default.png', verbose_name='Profile', help_text='64*64', blank=True, null=True)

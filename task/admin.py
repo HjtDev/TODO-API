@@ -1,0 +1,33 @@
+from django.contrib import admin
+from .models import Task
+from step.models import Step
+
+
+class StepInline(admin.StackedInline):
+    model = Step
+    extra = 0
+
+
+@admin.register(Task)
+class TaskAdmin(admin.ModelAdmin):
+
+    def get_progress(self, obj):
+        return obj.progress
+    get_progress.short_description = 'Progress'
+
+    def get_tags(self, obj):
+        return ', '.join(obj.tags.values_list('name', flat=True))
+    get_tags.short_description = 'Tags'
+
+    list_display = ('title', 'project', 'user', 'is_done', 'is_archived', 'remind_at', 'due_at')
+    list_filter = ('user', 'project', 'is_done', 'is_archived', 'created_at', 'remind_at', 'due_at', 'tags')
+    readonly_fields = ('created_at', 'updated_at', 'get_progress', 'get_tags')
+    search_fields = ('title', 'user__name', 'project')
+    ordering = ('user', '-completed_at')
+    inlines = (StepInline,)
+
+    fieldsets = (
+        ('General', {'fields': ('user', 'title', 'project', 'notes', 'get_tags')}),
+        ('Status', {'fields': ('get_progress', 'is_done', 'is_archived')}),
+        ('Dates', {'fields': ('remind_at', 'due_at', 'created_at', 'updated_at', 'completed_at')}),
+    )

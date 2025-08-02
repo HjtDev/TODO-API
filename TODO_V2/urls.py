@@ -16,11 +16,19 @@ Including another URLconf
 """
 from django.conf.urls.static import static
 from django.contrib import admin
-from django.urls import path
+from django.urls import path, include
 from django.conf import settings
+from drf_spectacular.views import SpectacularAPIView, SpectacularSwaggerView
 
 urlpatterns = [
     path('admin/', admin.site.urls),
+    path('api/v2/schema/', SpectacularAPIView.as_view(), name='schema'),
+    path('api/v2/docs/', SpectacularSwaggerView.as_view(), name='swagger'),
+    path('api/v2/auth/', include('user.urls', namespace='user')),
+    path('api/v2/tasks/', include('task.urls', namespace='task')),
+    path('api/v2/steps/', include('step.urls', namespace='step')),
+    path('api/v2/tags/', include('tag.urls', namespace='tag')),
+    path('api/v2/contacts/', include('contact.urls', namespace='contact')),
 ]
 
 if settings.DEBUG:

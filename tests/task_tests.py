@@ -1,0 +1,410 @@
+from datetime import timedelta
+from django.utils import timezone
+from rest_framework import status
+from rest_framework.test import APIClient
+from task.models import Task
+from tests.authentication_tests import INVALID_PHONE
+from user.models import User
+from django.urls import reverse
+from django.conf import settings
+from datetime import datetime
+import pytest
+import logging
+
+
+logger = logging.getLogger(__name__)
+
+
+VALID_PHONE = '0123456789'
+VALID_TITLE = 'Task title'
+INVALID_TITLE = 'Task Title' * 7
+REMIND_AT = timezone.now()
+DUE_AT = timezone.now() + timedelta(days=1)
+CONTENT_TYPE = 'application/json'
+
+TASK_URL = reverse('task:task-endpoints')
+
+@pytest.fixture
+def user():
+    return User.objects.create_user(phone=VALID_PHONE)
+
+@pytest.fixture
+def task(user):
+    return Task.objects.create(
+        user=user,
+        title='Task 1',
+        project='test',
+        notes='Task notes',
+        is_done=False,
+        is_archived=False,
+        remind_at=REMIND_AT,
+        due_at=DUE_AT,
+    )
+
+@pytest.fixture
+def tasks(user):
+    Task.objects.create(
+        user=user,
+        title='Task 1',
+        project='test',
+        notes='Task notes',
+        is_done=False,
+        is_archived=False,
+        remind_at=REMIND_AT,
+        due_at=DUE_AT,
+    )
+    Task.objects.create(
+        user=user,
+        title='Task 2',
+        project='test',
+        notes='Task notes',
+        is_done=False,
+        is_archived=False,
+        remind_at=REMIND_AT,
+        due_at=DUE_AT,
+    )
+    Task.objects.create(
+        user=user,
+        title='Task 3',
+        project='test',
+        notes='Task notes',
+        is_done=False,
+        is_archived=False,
+        remind_at=REMIND_AT,
+        due_at=DUE_AT,
+    )
+    return Task.objects.all()
+
+@pytest.fixture
+def client(db, user):
+    client = APIClient()
+    client.force_authenticate(user=user)
+    settings.REST_FRAMEWORK['DEFAULT_THROTTLE_RATES']['tasks'] = '1000/sec'
+    return client
+
+
+@pytest.mark.django_db
+def test_get_single_task(client, task):
+    # Test normal load
+    response = client.get(
+        TASK_URL,
+        data={
+            'get': task.id,
+            'quick': False
+        },
+        content_type=CONTENT_TYPE,
+    )
+
+    assert response.status_code == status.HTTP_200_OK
+    data = response.json()
+    assert 'message' in data
+    assert 'task' in data
+    r_task = data['task']
+    assert r_task['id'] == task.id
+    assert r_task['progress'] == task.progress
+    assert r_task['title'] == task.title
+    assert r_task['project'] == task.project
+    assert r_task['notes'] == task.notes
+    assert r_task['is_done'] == task.is_done
+    assert r_task['is_archived'] == task.is_archived
+    assert r_task['remind_at'] == task.remind_at.strftime('%Y-%m-%dT%H:%M:%S.%fZ')
+    assert r_task['due_at'] == task.due_at.strftime('%Y-%m-%dT%H:%M:%S.%fZ')
+    assert 'created_at' in r_task
+    assert 'updated_at' in r_task
+    assert 'completed_at' in r_task
+    assert r_task['user'] == task.user.id
+
+    # Test quick load
+    response = client.get(
+        TASK_URL,
+        data={
+            'get': task.id,
+            'quick': True
+        },
+        content_type=CONTENT_TYPE,
+    )
+
+    assert response.status_code == status.HTTP_200_OK
+    data = response.json()
+    assert 'message' in data
+    assert 'task' in data
+    r_task = data['task']
+    assert r_task['id'] == task.id
+    assert r_task['progress'] == task.progress
+    assert r_task['title'] == task.title
+    assert r_task['project'] == task.project
+    assert r_task['is_done'] == task.is_done
+    assert r_task['is_archived'] == task.is_archived
+    assert r_task['remind_at'] == task.remind_at.strftime('%Y-%m-%dT%H:%M:%S.%fZ')
+    assert r_task['due_at'] == task.due_at.strftime('%Y-%m-%dT%H:%M:%S.%fZ')
+
+
+def test_get_all_tasks(client, tasks):
+    # Quick load
+    response = client.get(
+        TASK_URL,
+        data={
+            'get': 'all',
+            'quick': True
+        },
+        content_type=CONTENT_TYPE,
+    )
+
+    assert response.status_code == status.HTTP_200_OK
+    data = response.json()
+    assert 'message' in data
+    assert 'tasks' in data
+    r_data = data['tasks']
+
+    assert isinstance(r_data, list)
+    assert len(r_data) == tasks.count()
+
+
+@pytest.mark.django_db
+def test_task_creation(client):
+
+    # No title test
+    response = client.post(
+        TASK_URL,
+        data={},
+        content_type=CONTENT_TYPE,
+    )
+    assert response.status_code == status.HTTP_400_BAD_REQUEST
+    assert 'title' in response.json()
+
+    # Invalid title test
+    response = client.post(
+        TASK_URL,
+        data={
+            'title': INVALID_TITLE,
+        },
+        content_type=CONTENT_TYPE,
+    )
+    assert response.status_code == status.HTTP_400_BAD_REQUEST
+    data = response.json()
+    assert 'message' in data
+    assert 'title' in data
+
+
+    # Title only creation
+    response = client.post(
+        TASK_URL,
+        data={
+            'title': VALID_TITLE,
+        },
+        content_type=CONTENT_TYPE,
+    )
+
+    assert response.status_code == status.HTTP_201_CREATED
+    data = response.json()
+    assert 'message' in data
+    assert 'task' in data
+
+    task: dict = data['task']
+    assert 'id' in task
+
+    db_task = Task.objects.get(id=task['id'])
+
+    assert VALID_TITLE == task['title'] == db_task.title
+    assert task['project'] == db_task.project is None
+    assert task['notes'] == db_task.notes is None
+    assert task['is_done'] == db_task.is_done == False
+    assert task['is_archived'] == db_task.is_archived == False
+    assert task['remind_at'] == db_task.remind_at is None
+    assert task['due_at'] == db_task.due_at is None
+
+    # Full Task Creation Test
+    response = client.post(
+        TASK_URL,
+        data={
+            'title': VALID_TITLE,
+            'project': 'test_project',
+            'notes': 'test_notes',
+            'is_done': True,
+            'is_archived': True,
+            'remind_at': '2025-07-28T09:00',
+            'due_at': '2025-07-28T10:00',
+        },
+        content_type=CONTENT_TYPE,
+    )
+    assert response.status_code == status.HTTP_201_CREATED
+    data = response.json()
+    assert 'message' in data
+    assert 'task' in data
+
+    task: dict = data['task']
+    assert 'id' in task
+
+    db_task = Task.objects.get(id=task['id'])
+
+    assert VALID_TITLE == task['title'] == db_task.title
+    assert task['project'] == db_task.project
+    assert task['notes'] == db_task.notes
+    assert task['is_done'] == db_task.is_done
+    assert task['is_archived'] == db_task.is_archived
+
+    assert datetime.strptime(task['remind_at'], '%Y-%m-%dT%H:%M:%SZ') == db_task.remind_at.replace(tzinfo=None)
+    assert datetime.strptime(task['due_at'], '%Y-%m-%dT%H:%M:%SZ') == db_task.due_at.replace(tzinfo=None)
+
+
+def test_task_update(client, task):
+    # No task_id
+    response = client.patch(
+        TASK_URL,
+        data={
+            'title': 'updated title',
+            'project': 'project updated',
+            'notes': 'updated notes',
+            'is_done': True,
+            'is_archived': False,
+            'remind_at': '2025-07-27T16:30:00.00Z',
+            'due_at': '2025-07-27T17:45:00.00Z'
+        },
+        content_type=CONTENT_TYPE,
+    )
+
+    assert response.status_code == status.HTTP_400_BAD_REQUEST
+    assert 'task_id' in response.json()
+
+    # Task does not exist
+    response = client.patch(
+        TASK_URL,
+        data={
+            'task_id': 9999,
+            'title': 'updated title',
+            'project': 'project updated',
+            'notes': 'updated notes',
+            'is_done': True,
+            'is_archived': False,
+            'remind_at': '2025-07-27T16:30:00.00Z',
+            'due_at': '2025-07-27T17:45:00.00Z'
+        },
+        content_type=CONTENT_TYPE,
+    )
+    assert response.status_code == status.HTTP_404_NOT_FOUND
+
+    # Bad input
+    response = client.patch(
+        TASK_URL,
+        data={
+            'task_id': task.id,
+            'title': INVALID_TITLE,
+            'project': 'project updated',
+            'notes': 'updated notes',
+            'is_done': True,
+            'is_archived': False,
+            'remind_at': '2025-07-27T16:30:00.00Z',
+            'due_at': '2025-07-27T17:45:00.00Z'
+        },
+        content_type=CONTENT_TYPE,
+    )
+    assert response.status_code == status.HTTP_400_BAD_REQUEST
+    assert 'title' in response.json()
+
+    # Successful update
+    response = client.patch(
+        TASK_URL,
+        data={
+            'task_id': task.id,
+            'title': 'updated title',
+            'project': 'project updated',
+            'notes': 'updated notes',
+            'is_done': True,
+            'is_archived': False,
+            'remind_at': '2025-07-27T16:30:00.00Z',
+            'due_at': '2025-07-27T17:45:00.00Z'
+        },
+        content_type=CONTENT_TYPE,
+    )
+    assert response.status_code == status.HTTP_200_OK
+    data = response.json()
+    assert 'task' in data
+    data = data['task']
+    task.refresh_from_db()
+
+    assert task.title == data['title'] == 'updated title'
+    assert task.project == data['project'] == 'project updated'
+    assert task.notes == data['notes'] == 'updated notes'
+    assert task.is_done == data['is_done'] == True
+    assert task.is_archived == data['is_archived'] == False
+    assert task.remind_at.replace(tzinfo=None) == datetime.strptime(data['remind_at'], '%Y-%m-%dT%H:%M:%SZ')
+    assert task.due_at.replace(tzinfo=None) == datetime.strptime(data['due_at'], '%Y-%m-%dT%H:%M:%SZ')
+    assert 'completed_at' in data
+
+
+def test_task_delete(client, task, tasks):
+    user = task.user
+    assert user.tasks.count() >= 3, 'This test requires at least 4 tasks'
+
+    # No task_id
+    response = client.delete(
+        TASK_URL,
+        data={},
+        content_type=CONTENT_TYPE,
+    )
+    assert response.status_code == status.HTTP_400_BAD_REQUEST
+    assert 'task_id' in response.json()
+
+    # Invalid task_id
+    response = client.delete(
+        TASK_URL,
+        data={
+            'task_id': 'abc',
+        },
+        content_type=CONTENT_TYPE,
+    )
+    assert response.status_code == status.HTTP_400_BAD_REQUEST
+
+    # Single task deletion
+    response = client.delete(
+        TASK_URL,
+        data={
+            'task_id': task.id,
+        },
+        content_type=CONTENT_TYPE,
+    )
+    assert response.status_code == status.HTTP_200_OK
+    assert not Task.objects.filter(id=task.id).exists()
+
+    # Multiple task
+    initial_count = tasks.count()
+    response = client.delete(
+        TASK_URL,
+        data={
+            'task_id': ','.join((str(tasks[0].id), str(tasks[1].id))),
+        },
+        content_type=CONTENT_TYPE,
+    )
+    assert response.status_code == status.HTTP_200_OK
+    assert user.tasks.count() == initial_count - 2
+
+    # All task deletion
+    response = client.delete(
+        TASK_URL,
+        data={
+            'task_id': 'all',
+        },
+        content_type=CONTENT_TYPE,
+    )
+    assert response.status_code == status.HTTP_200_OK
+    assert user.tasks.count() == 0
+
+    # Multiple task deletion when no task exists
+    response = client.delete(
+        TASK_URL,
+        data={
+            'task_id': '1,2',
+        },
+        content_type=CONTENT_TYPE,
+    )
+    assert response.status_code == status.HTTP_404_NOT_FOUND
+
+    # All task deletion when no task exists
+    response = client.delete(
+        TASK_URL,
+        data={
+            'task_id': 'all',
+        },
+        content_type=CONTENT_TYPE,
+    )
+    assert response.status_code == status.HTTP_404_NOT_FOUND
