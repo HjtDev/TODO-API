@@ -34,16 +34,21 @@ jobs:
     steps:
       - uses: actions/checkout@v3
 
-      - name: Set up Python 3.13
+      - name: Set up Python
         uses: actions/setup-python@v4
         with:
-          python-version: '3.13'
+          python-version: '3.11'  # Changed to 3.11 (Django 5.2's recommended version)
 
-      - name: Install dependencies
+      - name: Install system dependencies
+        run: |
+          sudo apt-get update
+          sudo apt-get install -y libpq-dev python3-dev  # Required for psycopg2
+
+      - name: Install Python dependencies
         run: |
           python -m pip install --upgrade pip
           pip install -r requirements.txt
-          pip install pytest pytest-django
+          pip install pytest pytest-django pytest-cov
 
       - name: Setup environment
         run: |
@@ -53,9 +58,12 @@ jobs:
           echo "DB_NAME=test_db" >> .env
           echo "DB_USER=test_user" >> .env
           echo "DB_PASSWORD=test_pass" >> .env
-          echo "DB_HOST=localhost" >> .env
+          echo "DB_HOST=postgres" >> .env  # Changed to service name
           echo "DB_PORT=5432" >> .env
-          echo "REDIS_LOCATION=redis://localhost:6379/0" >> .env
+          echo "REDIS_LOCATION=redis://redis:6379/0" >> .env  # Changed to service name
+
+      - name: Wait for PostgreSQL
+        run: sleep 5  # Extra wait time for DB to be ready
 
       - name: Run migrations
         run: |
