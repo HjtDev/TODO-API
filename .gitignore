@@ -125,8 +125,6 @@ dmypy.json
 
 .idea/
 
-requirements.txt
-
 media/
 
 TODO_V2/utility.py
