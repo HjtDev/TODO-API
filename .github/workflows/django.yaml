@@ -37,7 +37,7 @@ jobs:
       - name: Set up Python
         uses: actions/setup-python@v4
         with:
-          python-version: '3.11'  # Changed to 3.11 (Django 5.2's recommended version)
+          python-version: '3.13.5'
 
       - name: Install system dependencies
         run: |
@@ -60,7 +60,7 @@ jobs:
           echo "DB_PASSWORD=test_pass" >> .env
           echo "DB_HOST=postgres" >> .env  # Changed to service name
           echo "DB_PORT=5432" >> .env
-          echo "REDIS_LOCATION=redis://redis:6379/0" >> .env  # Changed to service name
+          echo "REDIS_LOCATION=redis://redis:6379/0" >> .env
 
       - name: Wait for PostgreSQL
         run: sleep 5  # Extra wait time for DB to be ready
