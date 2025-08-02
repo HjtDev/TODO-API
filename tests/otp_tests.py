@@ -123,13 +123,13 @@ def test_cancel_otp(otp):
 
 
 def test_otp_expire(otp):
-    otp.expiration_time = 3
+    otp.expiration_time = 1
     token = otp.generate_token()
     test_data = {'meta': 'data'}
 
     # Success
     assert otp.save_token(token, **test_data), 'Failed to save initial token'
-    sleep(1)
+    sleep(.1)
     success, result = otp.validate_otp(token)
     assert success, 'Failed to validate OTP in time'
     assert result == test_data, 'Failed to retrieve extra data'
@@ -138,7 +138,7 @@ def test_otp_expire(otp):
 
     # Fail
     assert otp.save_token(token, **test_data), 'Failed to save token'
-    sleep(3.1)
+    sleep(1.1)
     success, result = otp.validate_otp(token)
     assert not success, 'Should fail when passes the expiration time'
     assert result == 'NO_ACTIVE_OTP'

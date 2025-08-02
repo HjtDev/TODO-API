@@ -34,9 +34,23 @@ UNAUTHORIZED_RESPONSE = OpenApiResponse(
     response=dict,
     examples=[
         OpenApiExample(
-            'Unauthorized',
+            'No Access Token',
             value={
                 'detail': 'Authentication credentials were not provided.'
+            }
+        ),
+        OpenApiExample(
+            'Invalid Access Token',
+            value={
+                'detail': 'Given token not valid for any token type',
+                'code': 'token_not_valid',
+                'message': [
+                    {
+                        'token_class': 'AccessToken',
+                        'token_type': 'access',
+                        'message': 'Token is invalid'
+                    }
+                ]
             }
         )
     ]

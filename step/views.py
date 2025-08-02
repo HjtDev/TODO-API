@@ -659,7 +659,7 @@ class StepView(APIView, GetDataMixin, ResponseBuilderMixin):
                 **e.detail
             )
 
-        if (isinstance(get, str) and get.isdigit()) or isinstance(get, int):
+        if self.is_id(get):
             try:
                 step = Step.objects.get(id=get, task__user=request.user)
                 return self.build_response(
@@ -676,7 +676,7 @@ class StepView(APIView, GetDataMixin, ResponseBuilderMixin):
         if 'task:' in get:
             task_id = get.split(':')[1]
 
-            if not task_id.isdigit():
+            if not self.is_id(task_id):
                 return self.build_response(
                     response_status=status.HTTP_400_BAD_REQUEST,
                     message='Invalid task ID'
@@ -719,7 +719,7 @@ class StepView(APIView, GetDataMixin, ResponseBuilderMixin):
             )
 
         task_id = data['task_id']
-        if (isinstance(task_id, str) and task_id.isdigit()) or isinstance(task_id, int):
+        if self.is_id(task_id):
             try:
                 task = request.user.tasks.get(id=task_id)
             except Task.DoesNotExist:
